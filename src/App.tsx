@@ -3,7 +3,8 @@ import { AppShell } from "./components/AppShell";
 import { AdaptCard } from "./components/AdaptCard";
 import { OutboundSheet } from "./components/DealCard";
 import { ArrivalSheet, StoryPlayer } from "./components/Story";
-import { Button, Sheet, Tag, Thumb } from "./components/ui";
+import { Button, Sheet, Tag } from "./components/ui";
+import { StopThumb } from "./components/Cover";
 import {
   ADAPTS,
   HUALIEN_TRIP,
@@ -86,6 +87,7 @@ const Event = lazy(async () => ({ default: (await import("./screens/Event")).Eve
 const Events = lazy(async () => ({ default: (await import("./screens/Events")).Events }));
 const Chat = lazy(async () => ({ default: (await import("./screens/Chat")).Chat }));
 const DealsHub = lazy(async () => ({ default: (await import("./screens/DealsHub")).DealsHub }));
+const DealSearch = lazy(async () => ({ default: (await import("./screens/DealSearch")).DealSearch }));
 const Documents = lazy(async () => ({ default: (await import("./screens/Documents")).Documents }));
 const Reviews = lazy(async () => ({ default: (await import("./screens/Reviews")).Reviews }));
 const Subscribe = lazy(async () => ({ default: (await import("./screens/Subscribe")).Subscribe }));
@@ -372,6 +374,7 @@ export default function App() {
   else if (route?.k === "create") screen = <CreateTrip destId={route.destId} />;
   else if (route?.k === "stay") screen = <StayFlow destId={route.destId} />;
   else if (route?.k === "tickets") screen = <Tickets destId={route.destId} />;
+  else if (route?.k === "dealSearch") screen = <DealSearch q={route.q} cat={route.cat} />;
   else if (route?.k === "product") screen = <ProductDetail id={route.id} />;
   else if (route?.k === "transport") screen = <TransportFlow destId={route.destId} />;
   else if (route?.k === "carrental") screen = <CarRentalFlow destId={route.destId} />;
@@ -701,7 +704,7 @@ function TripRouteMap({ trip, day }: { trip: Trip; day: number }) {
       {chosen && (
         <div className="rm-up absolute inset-x-0 bottom-0 z-20 rounded-t-3xl bg-bg px-5 pb-[88px] pt-4">
           <div className="flex items-center gap-3">
-            <Thumb emoji={chosen.emoji} tint={chosen.tint} size={52} />
+            <StopThumb view={chosen} size={52} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15.5px] font-bold text-ink">{chosen.title}</div>
               <div className="num text-[12.5px] text-ink-3">

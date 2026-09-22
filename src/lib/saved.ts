@@ -18,7 +18,7 @@ import { useSyncExternalStore } from "react";
  * save — it is a toggle that lies about what it does.
  */
 
-const KEY = "resomap_saved";
+const KEY = "resomap_v3_saved";
 
 interface Saved {
   pois: string[];

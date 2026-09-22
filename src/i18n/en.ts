@@ -103,7 +103,7 @@ export const UI: Dict = {
   "都結清了": "All settled up",
   "結算": "Settle up",
   "價格與優惠為 Demo 示意資料，非即時報價。": "Prices and deals are Demo sample data, not live quotes.",
-  "ResoMap 目前與各平台無合作關係。": "ResoMap currently has no commercial relationship with any of these platforms.",
+  "ResoMap 參加 Klook、KKday 聯盟行銷計畫，與其他平台無合作關係。": "ResoMap takes part in the Klook and KKday affiliate programmes and has no commercial relationship with any other platform.",
   "Demo 版本・所有資料皆為示意": "Demo version · all data is illustrative only",
   "本篇導覽目前只有中文": "This guide is currently available in Chinese only.",
 };

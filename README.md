@@ -1,3 +1,16 @@
+# ResoMap T0 V3
+
+**V3 = V2 ＋ 可搜尋的「更多優惠」（直通 Klook / KKday）＋ 全 App 景點縮圖改用真實照片。**
+規格與實測過的網址規則見 [`T0_V3_DEMO_PROMPT.md`](T0_V3_DEMO_PROMPT.md)。
+
+線上版：https://tszhongyung0601-sketch.github.io/resomap-t0-v3/
+
+V2（未更動）：https://tszhongyung0601-sketch.github.io/resomap-t0-v2/
+
+以下是 V2 的原始說明。
+
+---
+
 # ResoMap T0 V2
 
 **ResoMap 是旅途中會即時幫你調整的 AI 旅行助手。**

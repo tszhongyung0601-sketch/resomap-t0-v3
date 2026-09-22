@@ -17,7 +17,7 @@ import { looksLikeEsim, parseEsim, type EsimCode } from "./lpa";
  * the string it was wrong about is the only way anybody could tell.
  */
 
-export const DOCS_KEY = "resomap_docs";
+export const DOCS_KEY = "resomap_v3_docs";
 
 /**
  * What a document is.

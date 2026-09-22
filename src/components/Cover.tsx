@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { photoFor } from "../data/imagePrompts";
 import { eventPhotoFor, portraitFor, shotFor, type HasPhoto, vehicleFor } from "../lib/photo";
 import { portraitCredit } from "../data/portraitCredits";
-import { Avatar } from "./ui";
+import { Avatar, Thumb } from "./ui";
 import type { Poi, PoiKind } from "../types";
 import type { StopView } from "../lib/stop";
 import { vehicleCredit } from "../data/vehicleCredits";
@@ -194,6 +194,67 @@ export function PoiImage({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * A place's square thumbnail — the photograph, at list size.
+ *
+ * V3 replaced the emoji tile everywhere a *place* is shown small: the trip list,
+ * search, saved, the map card. A row of 🏯 🏮 🍡 told somebody the category of
+ * each stop; a photograph tells them which stop it is, which is the question a
+ * list of their own itinerary is there to answer.
+ *
+ * The fallback is the old tile, not the generated poster. At 44px the poster's
+ * horizon and ridges turn to mush, while an emoji on a tint is still legible —
+ * and it is what the app showed before, so a missing photo looks deliberate
+ * rather than broken. A request that fails drops to the same tile.
+ *
+ * Only places. A driver, a hire counter or a coupon keeps its emoji tile via
+ * `Thumb` or `StopThumb`: there is no photograph of 「iRent 花蓮車站」 and a stock
+ * car park would be a picture of the wrong thing.
+ */
+export function PoiThumb({
+  poi,
+  size = 56,
+  radius = 14,
+}: {
+  poi: Poi;
+  size?: number;
+  radius?: number;
+}) {
+  const shot = photoFor(poi);
+  const [failed, setFailed] = useState(false);
+  if (!shot?.src || failed) {
+    return <Thumb emoji={poi.emoji} tint={poi.tint} size={size} radius={radius} />;
+  }
+  return (
+    <img
+      src={`${import.meta.env.BASE_URL}${shot.src}`}
+      alt={poi.name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="shrink-0 bg-surface-2 object-cover"
+      style={{ width: size, height: size, borderRadius: radius }}
+    />
+  );
+}
+
+/** The same thumbnail for an itinerary stop: a photo for a place, a tile for anything else. */
+export function StopThumb({
+  view,
+  size = 44,
+  radius = 12,
+}: {
+  view: StopView;
+  size?: number;
+  radius?: number;
+}) {
+  return view.poi ? (
+    <PoiThumb poi={view.poi} size={size} radius={radius} />
+  ) : (
+    <Thumb emoji={view.emoji} tint={view.tint} size={size} radius={radius} />
   );
 }
 

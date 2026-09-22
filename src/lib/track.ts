@@ -11,7 +11,7 @@ import type { DealCategory, EventName, PartnerId, TrackedEvent } from "../types"
  * Every surface that reads this data is required to label it Demo Data.
  */
 
-const KEY = "resomap_events";
+const KEY = "resomap_v3_events";
 const CAP = 2000;
 
 /** Indicative commission rates. Public affiliate ranges, not negotiated terms. */

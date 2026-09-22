@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import type { Deal, PlanAudience, ServiceId, StoryLength, Trip } from "./types";
 import type { NearbyCat } from "./data/nearbyCategories";
 import type { StopRef } from "./types";
+import type { SearchCat } from "./data/affiliateLinks";
 
 /**
  * A route stack on top of the tabs. No router library: every flow in this app
@@ -78,7 +79,9 @@ export type Route =
   | { k: "docs" }
   | { k: "reviews"; kind: "merchant" | "provider"; id: string }
   | { k: "subscribe"; audience?: PlanAudience }
-  | { k: "pro" };
+  | { k: "pro" }
+  /* V3 — 更多優惠的搜尋結果：一個關鍵字、一個分類，交給 Klook 和 KKday。 */
+  | { k: "dealSearch"; q: string; cat: SearchCat };
 
 /* 導覽庫 replaced 優惠 in the bar. Deals did not go away — it moved behind the
    trip that gives it a reason to exist, which is what MODEL B claims anyway:

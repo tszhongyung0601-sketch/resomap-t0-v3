@@ -274,7 +274,9 @@ export function BusinessDemo() {
       <Note>
         模擬佣金以各平台公開的參考分潤區間估算（門票 5%、住宿 4%、交通 4%、eSIM
         8%、旅平險 10%、在地優惠 6%），只用來說明商業模式的量級，不是任何一方談定的條件。
-        ResoMap 目前與 {PARTNERS.map((p) => p.name).join("、")} 皆無合作關係。
+        ResoMap 參加 Klook、KKday 聯盟行銷計畫，與{" "}
+        {PARTNERS.filter((p) => p.id !== "klook" && p.id !== "kkday").map((p) => p.name).join("、")}{" "}
+        皆無合作關係。
       </Note>
 
       <div className="h-24 shrink-0" />

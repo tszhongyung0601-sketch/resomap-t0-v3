@@ -63,7 +63,7 @@ export const SOURCE = [
 
   /* the honesty lines — these matter most of all in another language */
   "價格與優惠為 Demo 示意資料，非即時報價。",
-  "ResoMap 目前與各平台無合作關係。",
+  "ResoMap 參加 Klook、KKday 聯盟行銷計畫，與其他平台無合作關係。",
   "Demo 版本・所有資料皆為示意",
   "本篇導覽目前只有中文",
 ] as const;

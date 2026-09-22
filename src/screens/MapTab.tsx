@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { MapCredit, MapView, PinLegend, type MapPin } from "../components/MapView";
-import { Button, Card, Chip, Sheet, StoryBadge, Tag, Thumb } from "../components/ui";
+import { Button, Card, Chip, Sheet, StoryBadge, Tag } from "../components/ui";
+import { PoiThumb } from "../components/Cover";
 import { DEALS, POIS, TW_DESTINATIONS, dest, poisForDest } from "../data";
 import { distance, km } from "../lib/geo";
 import { audioCount, hasAudio } from "../lib/audio";
@@ -229,7 +230,7 @@ export function MapTab({ destId }: { destId: string | null }) {
           <div className="px-5 pb-4 pt-2.5">
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <Thumb emoji={active.emoji} tint={active.tint} size={52} />
+                <PoiThumb poi={active} size={52} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[15px] font-semibold text-ink">
@@ -292,7 +293,7 @@ export function MapTab({ destId }: { destId: string | null }) {
                 onClick={() => nav.go({ k: "poi", id: p.id })}
                 className="flex w-full items-center gap-3 border-b border-line py-2.5 text-left last:border-0 active:bg-surface"
               >
-                <Thumb emoji={p.emoji} tint={p.tint} size={44} />
+                <PoiThumb poi={p} size={44} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[14px] font-semibold text-ink">

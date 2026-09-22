@@ -16,7 +16,7 @@ import { useSyncExternalStore } from "react";
  * There is no backend. Comments live on this device and say so on screen.
  */
 
-const KEY = "resomap_reactions";
+const KEY = "resomap_v3_reactions";
 
 export interface Comment {
   id: string;

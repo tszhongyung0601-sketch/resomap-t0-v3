@@ -27,7 +27,7 @@ import type { ProviderKind } from "../types";
  * opened the previous build should not lose what they set.
  */
 
-const KEY = "resomap_account";
+const KEY = "resomap_v3_account";
 
 export type Membership = "free";
 export type MerchantMembership = "inactive" | "active";

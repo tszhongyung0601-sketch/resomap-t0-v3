@@ -1,7 +1,7 @@
 import { POIS, poi } from "../data";
 import { story } from "../data/stories";
-import { PoiImage } from "../components/Cover";
-import { Empty, Headphones, Screen, StoryBadge, Thumb, TopBar } from "../components/ui";
+import { PoiImage, PoiThumb } from "../components/Cover";
+import { Empty, Headphones, Screen, StoryBadge, TopBar } from "../components/ui";
 import { playLabel, rating } from "../lib/story";
 import { useSaved } from "../lib/saved";
 import { useNav } from "../nav";
@@ -83,7 +83,7 @@ export function Saved() {
                       key={s.id}
                       className="flex items-center gap-3 rounded-2xl bg-surface p-2.5"
                     >
-                      <Thumb emoji={p.emoji} tint={p.tint} size={56} radius={12} />
+                      <PoiThumb poi={p} size={56} radius={12} />
                       <button
                         onClick={() => nav.go({ k: "poi", id: p.id })}
                         className="min-w-0 flex-1 text-left"

@@ -103,7 +103,7 @@ export const UI: Dict = {
   "都結清了": "Semua lunas",
   "結算": "Lunasi",
   "價格與優惠為 Demo 示意資料，非即時報價。": "Harga dan promo adalah data Demo untuk ilustrasi, bukan penawaran real-time.",
-  "ResoMap 目前與各平台無合作關係。": "ResoMap saat ini tidak memiliki hubungan kerja sama dengan platform mana pun.",
+  "ResoMap 參加 Klook、KKday 聯盟行銷計畫，與其他平台無合作關係。": "ResoMap mengikuti program afiliasi Klook dan KKday, dan tidak memiliki hubungan kerja sama dengan platform lain.",
   "Demo 版本・所有資料皆為示意": "Versi Demo・Semua data hanya ilustrasi",
   "本篇導覽目前只有中文": "Panduan ini saat ini hanya tersedia dalam bahasa Mandarin.",
 };

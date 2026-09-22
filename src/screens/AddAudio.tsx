@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { POIS, poi } from "../data";
 import { BY_DEST } from "../data/destinations";
-import { Button, Note, Screen, Thumb, TopBar } from "../components/ui";
+import { Button, Note, Screen, TopBar } from "../components/ui";
+import { PoiThumb } from "../components/Cover";
 import { addDraft, useAccount } from "../lib/account";
 import { HOME_LANGUAGE } from "../lib/audio";
 import { useNav } from "../nav";
@@ -225,7 +226,7 @@ export function AddAudio({ poiId }: { poiId?: string }) {
           <Q title="這段是關於哪個地方" note="選了之後，這則語音會掛在那個景點的清單上。">
             {spotPoi && (
               <div className="mb-3 flex items-center gap-3 rounded-2xl bg-brand-wash p-3">
-                <Thumb emoji={spotPoi.emoji} tint={spotPoi.tint} size={44} radius={12} />
+                <PoiThumb poi={spotPoi} size={44} radius={12} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[14.5px] font-bold text-ink">
                     {spotPoi.name}
@@ -250,7 +251,7 @@ export function AddAudio({ poiId }: { poiId?: string }) {
                   onClick={() => setSpot(p.id)}
                   className="flex w-full items-center gap-3 border-b border-line py-2.5 text-left last:border-0 active:bg-surface"
                 >
-                  <Thumb emoji={p.emoji} tint={p.tint} size={40} radius={10} />
+                  <PoiThumb poi={p} size={40} radius={10} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold text-ink">
                       {p.name}

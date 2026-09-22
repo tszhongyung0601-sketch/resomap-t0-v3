@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BY_DEST, DESTINATIONS, POIS, REGIONS } from "../data";
 import { MapCredit, MapView, type MapPin } from "../components/MapView";
 import { Chip, Empty, Segmented, StoryBadge, Thumb, TopBar } from "../components/ui";
+import { PoiThumb } from "../components/Cover";
 import { track } from "../lib/track";
 import { useNav } from "../nav";
 import { POI_KIND_LABELS, type Poi } from "../types";
@@ -275,7 +276,7 @@ function PoiRow({
         compact ? "py-2.5" : "py-3"
       }`}
     >
-      <Thumb emoji={poi.emoji} tint={poi.tint} size={compact ? 44 : 52} />
+      <PoiThumb poi={poi} size={compact ? 44 : 52} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[14.5px] font-semibold text-ink">{poi.name}</span>

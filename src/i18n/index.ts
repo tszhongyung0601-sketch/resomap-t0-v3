@@ -69,7 +69,7 @@ export const useI18n = () => useContext(I18nContext);
 /** The common case: just the translator. */
 export const useT = () => useContext(I18nContext).t;
 
-const KEY = "resomap_locale";
+const KEY = "resomap_v3_locale";
 
 export function readLocale(): Locale {
   try {

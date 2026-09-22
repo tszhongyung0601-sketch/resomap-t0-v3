@@ -59,7 +59,7 @@ export const INFO: Record<string, InfoTopic> = {
     title: "聯盟合作",
     body: [
       "由 Booking、Agoda、Klook、KKday 等平台提供的內容，預訂與付款都在對方平台完成。",
-      "ResoMap 目前與各平台皆無合作關係，價格與供應狀況以對方平台為準。",
+      "ResoMap 參加 Klook、KKday 聯盟行銷計畫，透過連結預訂 ResoMap 可能獲得佣金，你付的價格不變；與其他平台皆無合作關係。價格與供應狀況以對方平台為準。",
     ],
   },
 
@@ -70,7 +70,7 @@ export const INFO: Record<string, InfoTopic> = {
     body: [
       "這是 ResoMap 的可點擊原型：所有景點座標為真，商家、服務者、價格與評價都是示意資料。",
       "語音由瀏覽器即時朗讀文字稿，沒有真實錄音；訂閱、身份與上傳只留在這台裝置上，不會送出，也不會產生任何費用。",
-      "ResoMap 目前與 Klook、KKday、Booking.com、Agoda、Trip.com 及畫面上的任何商家皆無合作關係。",
+      "ResoMap 參加 Klook、KKday 聯盟行銷計畫；與 Booking.com、Agoda、Trip.com 及畫面上的任何商家皆無合作關係。",
     ],
   },
 };

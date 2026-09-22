@@ -1,8 +1,8 @@
 # DEPLOYMENT
 
-線上位址：**https://tszhongyung0601-sketch.github.io/resomap-t0-v2/**
+線上位址：**https://tszhongyung0601-sketch.github.io/resomap-t0-v3/**
 
-Repo：`tszhongyung0601-sketch/resomap-t0-v2`，branch `main`。
+Repo：`tszhongyung0601-sketch/resomap-t0-v3`，branch `main`。
 
 ---
 
@@ -26,7 +26,7 @@ actions/deploy-pages        部署
 Pages 的 source 必須設成 GitHub Actions：
 
 ```bash
-gh api -X POST repos/tszhongyung0601-sketch/resomap-t0-v2/pages \
+gh api -X POST repos/tszhongyung0601-sketch/resomap-t0-v3/pages \
   -f build_type=workflow
 ```
 
@@ -36,13 +36,13 @@ gh api -X POST repos/tszhongyung0601-sketch/resomap-t0-v2/pages \
 
 ## Base path — 這是最容易壞掉的一件事
 
-Pages 服務在 `/resomap-t0-v2/`，不是 `/`。三個地方必須一致：
+Pages 服務在 `/resomap-t0-v3/`，不是 `/`。三個地方必須一致：
 
 | 位置 | 值 |
 |---|---|
-| `vite.config.ts` | `base: '/resomap-t0-v2/'` |
-| repo 名稱 | `resomap-t0-v2` |
-| Pages URL | `https://tszhongyung0601-sketch.github.io/resomap-t0-v2/` |
+| `vite.config.ts` | `base: '/resomap-t0-v3/'` |
+| repo 名稱 | `resomap-t0-v3` |
+| Pages URL | `https://tszhongyung0601-sketch.github.io/resomap-t0-v3/` |
 
 **改 repo 名稱就一定要改 `base`**，否則 JS / CSS 會 404，畫面全白。
 
@@ -87,11 +87,11 @@ Pages 服務在 `/resomap-t0-v2/`，不是 `/`。三個地方必須一致：
 ```bash
 npm run build
 npx vite preview --port 4173
-# → http://localhost:4173/resomap-t0-v2/
+# → http://localhost:4173/resomap-t0-v3/
 ```
 
 `vite preview` 會套用 `base`，所以這個網址跟正式站的結構完全相同。
-用 `npm run dev` 也會是 `/resomap-t0-v2/`。
+用 `npm run dev` 也會是 `/resomap-t0-v3/`。
 
 ---
 
@@ -99,16 +99,16 @@ npx vite preview --port 4173
 
 ```bash
 # 1. workflow 有沒有綠燈
-gh run list --repo tszhongyung0601-sketch/resomap-t0-v2 --limit 3
+gh run list --repo tszhongyung0601-sketch/resomap-t0-v3 --limit 3
 
 # 2. Pages 狀態
-gh api repos/tszhongyung0601-sketch/resomap-t0-v2/pages
+gh api repos/tszhongyung0601-sketch/resomap-t0-v3/pages
 
 # 3. HTTP 200
-curl -sSI https://tszhongyung0601-sketch.github.io/resomap-t0-v2/ | head -1
+curl -sSI https://tszhongyung0601-sketch.github.io/resomap-t0-v3/ | head -1
 
 # 4. 資產也要 200（不能只測首頁）
-curl -sSI https://tszhongyung0601-sketch.github.io/resomap-t0-v2/photos/longshan-card.webp | head -1
+curl -sSI https://tszhongyung0601-sketch.github.io/resomap-t0-v3/photos/longshan-card.webp | head -1
 ```
 
 第一次啟用 Pages 之後，DNS 與 CDN 大約需要 1–3 分鐘才會生效，
@@ -119,7 +119,7 @@ curl -sSI https://tszhongyung0601-sketch.github.io/resomap-t0-v2/photos/longshan
 ## 手動觸發重新部署
 
 ```bash
-gh workflow run deploy.yml --repo tszhongyung0601-sketch/resomap-t0-v2
+gh workflow run deploy.yml --repo tszhongyung0601-sketch/resomap-t0-v3
 ```
 
 `workflow_dispatch` 已經開好。

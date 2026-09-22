@@ -13,8 +13,8 @@ import {
 } from "../lib/reactions";
 import { createPlayer, formatClock, splitSentences, type VoicePlayer } from "../lib/speech";
 import { track } from "../lib/track";
-import { Button, Headphones, Segmented, Sheet, Tag, Thumb } from "./ui";
-import { PoiImage } from "./Cover";
+import { Button, Headphones, Segmented, Sheet, Tag } from "./ui";
+import { PoiImage, PoiThumb } from "./Cover";
 import { getNearbyCountUnit, nearbyCounts } from "../lib/nearby";
 import { BY_DEST } from "../data/destinations";
 import type { NearbyCat } from "../data/nearbyCategories";
@@ -59,7 +59,7 @@ export function ArrivalSheet({
     <Sheet open onClose={onLater}>
       <div className="px-5 pb-2 pt-2">
         <div className="flex items-center gap-3">
-          <Thumb emoji={p.emoji} tint={p.tint} size={56} />
+          <PoiThumb poi={p} size={56} />
           <div>
             <div className="text-[13px] text-ink-3">你到了</div>
             <div className="text-[19px] font-bold text-ink">{p.name}</div>

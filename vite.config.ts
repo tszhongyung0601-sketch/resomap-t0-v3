@@ -4,9 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // GitHub Pages serves this at /resomap-t0-v2/, not at /. Change the repo name
+  // GitHub Pages serves this at /resomap-t0-v3/, not at /. Change the repo name
   // and this has to change with it, or every asset 404s and the page is blank.
-  base: '/resomap-t0-v2/',
+  base: '/resomap-t0-v3/',
   plugins: [react(), tailwindcss()],
   build: {
     // Three chunks that change at different rates, so a copy edit does not make

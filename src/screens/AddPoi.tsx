@@ -5,7 +5,8 @@ import { distance, km } from "../lib/geo";
 import { lookupPlaceLink } from "../lib/placelink";
 import { hasStory } from "../lib/story";
 import { useNav } from "../nav";
-import { Button, Row, Sheet, StoryBadge, Thumb } from "../components/ui";
+import { Button, Row, Sheet, StoryBadge } from "../components/ui";
+import { PoiThumb } from "../components/Cover";
 import { POI_KIND_LABELS, type Poi, type Trip } from "../types";
 import { poiOf, viewOf } from "../lib/stop";
 import type { StopView } from "../lib/stop";
@@ -225,7 +226,7 @@ function PasteLink({
       {found?.kind === "found" && (
         <div className="mt-2.5 rounded-2xl bg-surface p-3.5">
           <div className="flex items-center gap-3">
-            <Thumb emoji={found.poi.emoji} tint={found.poi.tint} size={44} radius={12} />
+            <PoiThumb poi={found.poi} size={44} radius={12} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="truncate text-[15px] font-semibold text-ink">
@@ -296,7 +297,7 @@ function PoiRow({
       onClick={onClick}
       className="flex w-full items-center gap-3 px-5 py-2.5 text-left active:bg-surface"
     >
-      <Thumb emoji={p.emoji} tint={p.tint} size={44} radius={12} />
+      <PoiThumb poi={p} size={44} radius={12} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[15px] font-semibold text-ink">{p.name}</div>
         <div className="truncate text-[12.5px] text-ink-3">

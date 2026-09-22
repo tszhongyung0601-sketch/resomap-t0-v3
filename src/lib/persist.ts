@@ -53,5 +53,5 @@ export function clear(key: string): void {
   }
 }
 
-export const TRIPS_KEY = "resomap_trips";
-export const DAY_EDITS_KEY = "resomap_day_edits";
+export const TRIPS_KEY = "resomap_v3_trips";
+export const DAY_EDITS_KEY = "resomap_v3_day_edits";

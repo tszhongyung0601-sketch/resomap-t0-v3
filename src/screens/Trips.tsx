@@ -2,7 +2,8 @@ import { useState } from "react";
 import { poi } from "../data";
 import { BrandBar } from "../components/BrandBar";
 import { useNav } from "../nav";
-import { Button, Card, Empty, Screen, Segmented, StoryBadge, Thumb } from "../components/ui";
+import { Button, Card, Empty, Screen, Segmented, StoryBadge } from "../components/ui";
+import { PoiThumb } from "../components/Cover";
 import { DocumentsPane } from "./Documents";
 import { TogetherPane } from "./Together";
 import type { Trip } from "../types";
@@ -170,7 +171,7 @@ function TripRow({ trip }: { trip: Trip }) {
         <div className="mt-3 flex gap-2">
           {thumbs.map((id) => {
             const p = poi(id);
-            return <Thumb key={id} emoji={p.emoji} tint={p.tint} size={52} radius={12} />;
+            return <PoiThumb key={id} poi={p} size={64} radius={12} />;
           })}
         </div>
       )}

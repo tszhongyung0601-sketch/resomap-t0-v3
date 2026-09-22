@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { AFFILIATE_DISCLOSURE, partner } from "../data/affiliatePartners";
+import { isLivePlatform, searchUrl } from "../data/affiliateLinks";
 import { impression, track } from "../lib/track";
 import { Sheet, Tag, Thumb } from "./ui";
+import { PoiThumb } from "./Cover";
+import { BY_POI } from "../data";
 import type { Deal } from "../types";
 
 /**
@@ -40,7 +43,7 @@ export function DealCard({
         deal.comingLater ? "opacity-70" : "active:bg-surface-2"
       } ${compact ? "p-3" : "p-3.5"}`}
     >
-      <Thumb emoji={deal.emoji} tint={deal.tint} size={compact ? 44 : 52} />
+      <DealThumb deal={deal} size={compact ? 44 : 52} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[14.5px] font-semibold leading-snug text-ink">
@@ -63,12 +66,13 @@ export function DealCard({
 }
 
 /**
- * The outbound step, simulated.
+ * The outbound step.
  *
- * A real integration would open the platform in a browser with an affiliate
- * parameter. Here it shows exactly what would happen and stops, because a demo
- * that actually sends somebody to a checkout page is a demo that can take
- * somebody's money by accident.
+ * V3: for Klook and KKday it is real. The button is a link to that platform's
+ * search for this title, carrying ResoMap's affiliate id, and it opens in a new
+ * tab — a search page, not a checkout, so nobody pays anything by tapping it.
+ * Booking, Agoda and Trip.com have no id and no agreement, so for them this is
+ * still the V2 simulation: it shows what would happen and stops.
  */
 export function OutboundSheet({
   deal,
@@ -93,6 +97,14 @@ export function OutboundSheet({
 
   if (!deal || !deal.partner) return null;
   const p = partner(deal.partner);
+  const live = isLivePlatform(deal.partner) ? deal.partner : null;
+  const outbound = () =>
+    track("affiliate_outbound", {
+      dealId: deal.id,
+      partner: deal.partner,
+      category: deal.category,
+      destId: deal.destId,
+    });
   /* Dropping the unit here turns "NT$ 4,200 起 / 晚" into what reads as a total
      for the whole stay. */
   const price = `NT$ ${deal.priceTwd.toLocaleString()} 起${
@@ -103,7 +115,7 @@ export function OutboundSheet({
     <Sheet open onClose={onClose}>
       <div className="px-5 pb-2 pt-2">
         <div className="flex items-center gap-3">
-          <Thumb emoji={deal.emoji} tint={deal.tint} size={52} />
+          <DealThumb deal={deal} size={52} />
           <div className="min-w-0">
             <div className="truncate text-[16px] font-bold text-ink">{deal.title}</div>
             <div className="num text-[13px] text-ink-3">
@@ -120,20 +132,30 @@ export function OutboundSheet({
               </div>
             </div>
             <div className="mt-4">
-              <button
-                onClick={() => {
-                  track("affiliate_outbound", {
-                    dealId: deal.id,
-                    partner: deal.partner,
-                    category: deal.category,
-                    destId: deal.destId,
-                  });
-                  setGone(true);
-                }}
-                className="h-13 w-full rounded-full bg-brand text-[15px] font-bold text-white active:bg-brand-press"
-              >
-                前往 {p.name}
-              </button>
+              {live ? (
+                <a
+                  href={searchUrl(live, null, deal.title)}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  onClick={() => {
+                    outbound();
+                    setGone(true);
+                  }}
+                  className="flex h-13 w-full items-center justify-center rounded-full bg-brand text-[15px] font-bold text-white active:bg-brand-press"
+                >
+                  前往 {p.name}
+                </a>
+              ) : (
+                <button
+                  onClick={() => {
+                    outbound();
+                    setGone(true);
+                  }}
+                  className="h-13 w-full rounded-full bg-brand text-[15px] font-bold text-white active:bg-brand-press"
+                >
+                  前往 {p.name}
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -141,10 +163,12 @@ export function OutboundSheet({
             <div className="rounded-2xl bg-surface p-5 text-center">
               <div className="text-[28px]">🔗</div>
               <div className="mt-2 text-[15px] font-bold text-ink">
-                正式版會在這裡開啟 {p.name}
+                {live ? `已在新分頁開啟 ${p.name}` : `正式版會在這裡開啟 ${p.name}`}
               </div>
               <p className="mt-1.5 text-[13px] leading-relaxed text-ink-3">
-                Demo 不會真的跳轉。你可以模擬一筆成交，看看後台的數字怎麼跑。
+                {live
+                  ? `那是「${deal.title}」在 ${p.name} 的搜尋結果，實際價格以那一頁為準。回到這裡可以模擬一筆成交，看看後台的數字怎麼跑。`
+                  : "這個平台 Demo 不會真的跳轉。你可以模擬一筆成交，看看後台的數字怎麼跑。"}
               </p>
             </div>
             <button
@@ -170,5 +194,15 @@ export function OutboundSheet({
         </p>
       </div>
     </Sheet>
+  );
+}
+
+/** A deal on a real place shows the place; a tour or a pass keeps its tile. */
+function DealThumb({ deal, size }: { deal: Deal; size: number }) {
+  const place = deal.poiId ? BY_POI[deal.poiId] : undefined;
+  return place ? (
+    <PoiThumb poi={place} size={size} />
+  ) : (
+    <Thumb emoji={deal.emoji} tint={deal.tint} size={size} />
   );
 }

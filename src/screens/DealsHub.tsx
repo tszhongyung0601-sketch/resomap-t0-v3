@@ -1,5 +1,13 @@
+import { useRef, useState } from "react";
 import { BrandBar } from "../components/BrandBar";
+import { PhotoCredit, PoiImage } from "../components/Cover";
+import { DealSearchField } from "../components/DealSearchField";
 import { Note, Row, Screen, Section } from "../components/ui";
+import { poi } from "../data";
+import { dest } from "../data/destinations";
+import { SEARCH_CATS, catLabel, type SearchCat } from "../data/affiliateLinks";
+import { clearRecent, pushRecent, readRecent, type RecentSearch } from "../lib/dealSearch";
+import { focusTrip } from "../lib/trip";
 import { PartnerBadge } from "../components/Trade";
 import { PARTNERS } from "../data/affiliatePartners";
 import { AFFILIATE_OFFERS } from "../data/affiliateOffers";
@@ -31,7 +39,17 @@ import type { MerchantCategory } from "../types";
  *
  * Nothing here is new. Every number on this screen is counted from data that
  * already shipped, and every row opens a screen that already existed.
+ *
+ * **V3 puts a search above all of it.** Somebody opening a shop tab mostly
+ * knows the place and wants the ticket, the room or the car — so the top of
+ * the screen asks for exactly that, the way Klook's own home screen does, and
+ * hands the word to Klook and KKday on the next screen. Everything V2 had is
+ * still here, in the same order, one scroll down.
  */
+/* Places people actually type into Klook for Taiwan. Short on purpose: a rail
+   of twenty is a list to read, and this is meant to be a shortcut. */
+const HOT = ["日月潭", "九份", "墾丁", "花蓮", "台南", "台北101"];
+
 export function DealsHub() {
   const nav = useNav();
 
@@ -43,9 +61,154 @@ export function DealsHub() {
 
   const offersBy = (k: "hotel" | "tour") => AFFILIATE_OFFERS.filter((o) => o.kind === k).length;
 
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState<SearchCat>("ticket");
+  const [recent, setRecent] = useState<RecentSearch[]>(readRecent);
+  const input = useRef<HTMLInputElement>(null);
+
+  /* The trip somebody is on — or about to leave for — is the most likely
+     thing they came here to book for, so its city is the first shortcut. */
+  const trip = focusTrip(nav.trips);
+  const tripCity = trip ? dest(trip.destId)?.name : undefined;
+  const hot = tripCity ? HOT.filter((h) => h !== tripCity) : HOT;
+
+  const search = (word: string, c: SearchCat = cat) => {
+    const w = word.trim();
+    if (!w) return;
+    setRecent(pushRecent({ q: w, cat: c }));
+    nav.go({ k: "dealSearch", q: w, cat: c });
+  };
+
+  const placeholder = SEARCH_CATS.find((c) => c.id === cat)!.placeholder;
+  const hero = poi("qixingtan");
+
   return (
     <Screen>
       <BrandBar title="更多優惠" />
+
+      {/* ------------------------------------------------------------ search */}
+      <div className="relative shrink-0 overflow-hidden" style={{ height: 232 }}>
+        {/* Wrapped, because PoiImage carries its own `relative` and a second
+            position class on the same element is decided by stylesheet order. */}
+        <div className="absolute inset-0">
+          <PoiImage poi={hero} height="100%" radius={0} emoji={false} large />
+        </div>
+        {/* Dark at the top for the headline, dark at the bottom for the field's
+            shadow, clear in the middle so the photograph is still the point. */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,.52) 0%, rgba(0,0,0,.12) 45%, rgba(0,0,0,.08) 60%, rgba(0,0,0,.38) 100%)",
+          }}
+        />
+        <div className="relative px-5 pt-6">
+          <h2 className="text-[27px] font-black leading-tight tracking-tight text-white [text-shadow:0_2px_12px_rgba(0,0,0,.35)]">
+            想去哪裡玩？
+          </h2>
+          <p className="mt-1.5 text-[13.5px] font-medium text-white/95 [text-shadow:0_1px_8px_rgba(0,0,0,.4)]">
+            搜一次，Klook 和 KKday 都幫你找好
+          </p>
+        </div>
+        <div className="absolute inset-x-4 bottom-4">
+          <DealSearchField
+            value={q}
+            onChange={setQ}
+            onSubmit={(w) => search(w)}
+            placeholder={placeholder}
+            inputRef={input}
+            elevated
+          />
+        </div>
+      </div>
+      <PhotoCredit poi={hero} />
+
+      {/* Picking a category is choosing what the search is for. With a word
+          already typed it is also the search — making somebody tap a tile and
+          then 搜尋 is one tap too many for a decision they have already made. */}
+      <div className="grid grid-cols-4 gap-2 px-4 pt-4" role="radiogroup" aria-label="搜尋分類">
+        {SEARCH_CATS.map((c) => {
+          const on = c.id === cat;
+          return (
+            <button
+              key={c.id}
+              role="radio"
+              aria-checked={on}
+              onClick={() => {
+                setCat(c.id);
+                if (q.trim()) search(q, c.id);
+                else input.current?.focus();
+              }}
+              className={`flex flex-col items-center gap-1.5 rounded-2xl px-1 pb-2.5 pt-3 transition active:scale-[.97] ${
+                on ? "bg-brand-wash ring-2 ring-brand" : "bg-white ring-1 ring-line active:bg-surface"
+              }`}
+            >
+              <span className="text-[26px] leading-none" aria-hidden>
+                {c.icon}
+              </span>
+              <span className={`text-[12.5px] font-semibold ${on ? "text-brand" : "text-ink-2"}`}>
+                {c.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="px-5 pt-5">
+        <div className="text-[12.5px] font-semibold text-ink-3">熱門搜尋・{catLabel(cat)}</div>
+        <div className="-mx-5 mt-2.5 flex gap-2 overflow-x-auto px-5 pb-1 no-scrollbar">
+          {tripCity && (
+            <button
+              onClick={() => search(tripCity)}
+              className="relative shrink-0 rounded-full bg-brand-wash px-3.5 py-2 text-[13px] font-semibold text-brand after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[''] active:bg-surface-2"
+            >
+              你的行程・{tripCity}
+            </button>
+          )}
+          {hot.map((h) => (
+            <button
+              key={h}
+              onClick={() => search(h)}
+              className="relative shrink-0 rounded-full bg-surface px-3.5 py-2 text-[13px] font-semibold text-ink-2 after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[''] active:bg-surface-2"
+            >
+              {h}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {recent.length > 0 && (
+        <div className="px-5 pt-5">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[12.5px] font-semibold text-ink-3">最近搜尋</span>
+            <button
+              onClick={() => {
+                clearRecent();
+                setRecent([]);
+              }}
+              className="-my-2.5 -mr-2 px-2 py-2.5 text-[12.5px] font-semibold text-ink-3"
+            >
+              清除
+            </button>
+          </div>
+          <div className="mt-1">
+            {recent.map((r) => (
+              <button
+                key={`${r.cat}-${r.q}`}
+                onClick={() => {
+                  setCat(r.cat);
+                  search(r.q, r.cat);
+                }}
+                className="flex min-h-11 w-full items-center gap-3 text-left active:opacity-70"
+              >
+                <ClockIcon />
+                <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink">{r.q}</span>
+                <span className="shrink-0 text-[12px] text-ink-3">{catLabel(r.cat)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------ ResoMap's own supply */}
       <Section title="ResoMap 合作商家" tight>
@@ -95,11 +258,11 @@ export function DealsHub() {
       </Section>
 
       {/* ------------------------------------------------------ somebody else's */}
-      <Section title="聯盟合作平台" tight>
+      <Section title="更多比價" tight>
         <p className="px-5 pb-3 text-[12.5px] leading-relaxed text-ink-3">
           {PARTNERS.map((x) => x.name).join("・")}。
-          這些是別人的庫存，ResoMap 目前與各平台都沒有合作關係，
-          所有導購連結都是空的——按下去會說明串接之後會發生什麼。
+          這些是別人的庫存。ResoMap 參加 Klook、KKday 聯盟行銷計畫，與 Booking、Agoda、
+          Trip.com 無合作關係；下面各頁的價格都是示意，要訂請用最上面的搜尋。
         </p>
 
         <Row icon="🎟️" label="門票・體驗" value="Klook / KKday" onClick={() => nav.go({ k: "tickets" })} />
@@ -132,8 +295,9 @@ export function DealsHub() {
       </Section>
 
       <Note>
-        價格與供應狀況皆為 Demo 示意資料，非即時報價。ResoMap
-        目前與 Klook、KKday、Booking、Agoda、Trip.com 及各租車業者皆無合作關係。
+        價格與供應狀況皆為 Demo 示意資料，非即時報價。ResoMap 參加 Klook、KKday
+        聯盟行銷計畫，透過搜尋連結預訂可能獲得佣金，你付的價格不變；與 Booking、Agoda、
+        Trip.com 及各租車業者皆無合作關係。
       </Note>
 
       <div className="h-24 shrink-0" />
@@ -150,5 +314,23 @@ function Stat({ label, value, unit }: { label: string; value: number; unit: stri
         {value} <span className="text-[12px] font-semibold text-ink-3">{unit}</span>
       </div>
     </div>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="shrink-0 text-ink-3"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

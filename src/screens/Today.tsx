@@ -1,5 +1,5 @@
 import { ADAPTS, ME, story } from "../data";
-import { PoiImage, StopImage } from "../components/Cover";
+import { PoiImage, StopImage, StopThumb } from "../components/Cover";
 import {
   Button,
   Empty,
@@ -7,7 +7,6 @@ import {
   Screen,
   Section,
   StoryBadge,
-  Thumb,
   TopBar,
 } from "../components/ui";
 import { dur } from "../lib/adapt";
@@ -225,7 +224,7 @@ function NextRow({ stop }: { stop: Stop }) {
       <span className="num w-11 shrink-0 text-[13.5px] font-semibold text-ink-3">
         {stop.at}
       </span>
-      <Thumb emoji={v.emoji} tint={v.tint} size={44} radius={12} />
+      <StopThumb view={v} size={44} radius={12} />
       <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">
         {v.title}
       </span>

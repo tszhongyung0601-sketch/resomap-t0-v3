@@ -56,8 +56,8 @@ export function DemoPanel({
         </div>
 
         <p className="mt-6 text-[11.5px] leading-relaxed text-ink-3">
-          全部資料為示意。ResoMap 目前與 Klook、KKday、Booking、Agoda、Trip.com
-          皆無合作關係。
+          全部資料為示意。ResoMap 參加 Klook、KKday 聯盟行銷計畫，與 Booking、Agoda、
+          Trip.com 皆無合作關係。
         </p>
       </div>
       {/* shrink-0, or the spacer measures 0 in the flex column and the last

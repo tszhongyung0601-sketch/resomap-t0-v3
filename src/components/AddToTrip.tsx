@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, Sheet, Thumb } from "./ui";
+import { Button, Sheet } from "./ui";
+import { StopThumb } from "./Cover";
 import { useI18n } from "../i18n";
 import { refKey, refOf, viewOf } from "../lib/stop";
 import { useNav } from "../nav";
@@ -93,7 +94,7 @@ export function AddToTrip({
       <div className="px-5 pb-5 pt-1">
         <div className="rounded-2xl bg-surface p-3.5">
           <div className="flex items-center gap-3">
-            <Thumb emoji={view.emoji} tint={view.tint} size={44} radius={12} />
+            <StopThumb view={view} size={44} radius={12} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15px] font-semibold text-ink">{title}</div>
               <div className="mt-0.5 truncate text-[12.5px] text-ink-3">

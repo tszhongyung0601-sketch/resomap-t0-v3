@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AFFILIATE_DISCLOSURE, BY_POI, dest, partner } from "../data";
 import { BY_PRODUCT, PRODUCTS, cheapest } from "../data/affiliateProducts";
 import { Empty, Note, Row, Screen, Section, Tabs, Thumb, TopBar } from "../components/ui";
+import { PhotoCredit, PoiImage, PoiThumb } from "../components/Cover";
 import { impression } from "../lib/track";
 import { useNav } from "../nav";
 import { PRODUCT_CATEGORY_LABELS } from "../types";
@@ -129,7 +130,11 @@ function ProductRow({
       onClick={onOpen}
       className="flex w-full items-center gap-3 rounded-2xl bg-surface p-3.5 text-left transition active:bg-surface-2"
     >
-      <Thumb emoji={product.emoji} tint={product.tint} size={52} />
+      {product.poiId && BY_POI[product.poiId] ? (
+        <PoiThumb poi={BY_POI[product.poiId]} size={52} />
+      ) : (
+        <Thumb emoji={product.emoji} tint={product.tint} size={52} />
+      )}
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14.5px] font-semibold leading-snug text-ink">
           {product.name}
@@ -191,7 +196,16 @@ export function ProductDetail({ id }: { id: string }) {
         className="relative grid h-[200px] shrink-0 place-items-center text-[64px]"
         style={{ background: p.tint }}
       >
-        {p.emoji}
+        {/* Admission to a real place gets that place's photograph. A day tour
+            or a rafting trip is the operator's own product and has none, so it
+            keeps the tile — see PoiThumb. */}
+        {place ? (
+          <div className="absolute inset-0">
+            <PoiImage poi={place} height="100%" radius={0} emoji={false} large />
+          </div>
+        ) : (
+          p.emoji
+        )}
         <button
           onClick={() => nav.back()}
           aria-label="返回"
@@ -200,6 +214,10 @@ export function ProductDetail({ id }: { id: string }) {
           ‹
         </button>
       </div>
+
+      {/* A full-width photograph carries its licence line, as it does on the
+          place's own page. */}
+      {place && <PhotoCredit poi={place} />}
 
       <div className="px-5 pt-5">
         <h1 className="text-[22px] font-bold leading-snug text-ink">{p.name}</h1>

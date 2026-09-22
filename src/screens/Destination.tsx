@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AFFILIATE_DISCLOSURE, BY_POI, dealsForDest, dest, poisForDest, story } from "../data";
 import { DealCard } from "../components/DealCard";
-import { Button, Empty, Note, Screen, Section, StoryBadge, Tabs, Thumb } from "../components/ui";
+import { Button, Empty, Note, Screen, Section, StoryBadge, Tabs } from "../components/ui";
+import { PoiThumb } from "../components/Cover";
 import { track } from "../lib/track";
 import { useNav } from "../nav";
 import {
@@ -338,7 +339,7 @@ function PoiRow({
       onClick={onClick}
       className="flex w-full items-center gap-3 border-b border-line py-3 text-left last:border-0 active:bg-surface"
     >
-      <Thumb emoji={poi.emoji} tint={poi.tint} size={52} />
+      <PoiThumb poi={poi} size={52} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[15px] font-semibold text-ink">{poi.name}</span>
