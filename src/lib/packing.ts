@@ -158,29 +158,37 @@ export function usePacking(trip: Trip, sky: Map<string, DayWeather> | null) {
   ];
   const done = items.filter((i) => state.checked.includes(i.id)).length;
 
+  /* Every write reads the store as it is at that moment, not the `state` this
+     render captured. Two taps inside one render — tick, tick — used to both
+     start from the same snapshot, and the second quietly undid the first. */
+  const now = () => store[trip.id] ?? EMPTY;
+
   return {
     items,
     done,
     isChecked: (id: string) => state.checked.includes(id),
-    toggle: (id: string) =>
+    toggle: (id: string) => {
+      const cur = now();
       commit(trip.id, {
-        ...state,
-        checked: state.checked.includes(id)
-          ? state.checked.filter((x) => x !== id)
-          : [...state.checked, id],
-      }),
+        ...cur,
+        checked: cur.checked.includes(id) ? cur.checked.filter((x) => x !== id) : [...cur.checked, id],
+      });
+    },
     add: (label: string) => {
       const text = label.trim();
       if (!text) return;
-      commit(trip.id, { ...state, added: [...state.added, { id: `mine-${Date.now()}`, label: text }] });
+      const cur = now();
+      commit(trip.id, { ...cur, added: [...cur.added, { id: `mine-${Date.now()}`, label: text }] });
     },
-    remove: (id: string) =>
+    remove: (id: string) => {
+      const cur = now();
       commit(trip.id, {
-        checked: state.checked.filter((x) => x !== id),
-        added: state.added.filter((a) => a.id !== id),
-        removed: id.startsWith("mine-") ? state.removed : [...state.removed, id],
-      }),
-    restore: () => commit(trip.id, { ...state, removed: [] }),
+        checked: cur.checked.filter((x) => x !== id),
+        added: cur.added.filter((a) => a.id !== id),
+        removed: id.startsWith("mine-") ? cur.removed : [...cur.removed, id],
+      });
+    },
+    restore: () => commit(trip.id, { ...now(), removed: [] }),
     hidden: state.removed.length,
   };
 }

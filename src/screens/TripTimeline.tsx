@@ -41,7 +41,7 @@ import { ModeSheet, SortSheet, StopOffer, TripTabs } from "../components/TripPla
 import { MODE_ICON } from "../lib/modes";
 import { useReceipts } from "./Expenses";
 import { usePacking } from "../lib/packing";
-import { iso, shortLabel, tripRange } from "../lib/tripDates";
+import { iso, tripRange } from "../lib/tripDates";
 import type { SearchCat } from "../data/affiliateLinks";
 
 import {
@@ -214,7 +214,7 @@ export function TripHome({ trip: source }: { trip: Trip }) {
           ))}
         </div>
         <p className="px-5 pt-2 text-[12px] leading-relaxed text-ink-3">
-          帶入{city}・{shortLabel(range.from)} – {shortLabel(range.to)}，到 Klook、KKday 比較。
+          帶入{city}・{trip.dates}，到 Klook、KKday 比較。
         </p>
       </Section>
 
@@ -862,7 +862,7 @@ function Leg({ to, via }: { to: Stop; via: Poi | null }) {
       <div className="border-l-[1.5px] border-line py-2 pl-3.5">
         <div className="text-[12.5px] text-ink-3">
           {LEG_ICON[mode]} {LEG_LABEL[mode]}
-          {mode === "self" ? "" : ` 約 ${min} 分鐘`} · {km(metres)}
+          {mode === "self" ? "" : min >= 60 ? ` 約 ${dur(min)}` : ` 約 ${min} 分鐘`} · {km(metres)}
         </div>
         {via && (
           <div className="mt-1 text-[12.5px] leading-relaxed text-ink-3">

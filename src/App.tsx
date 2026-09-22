@@ -223,9 +223,9 @@ export default function App() {
                        exactly it lands is the traveller's call, not ours. */
                     at: addMinutes(prev?.at ?? "10:00", (prev?.stayMin ?? 0) + 20),
                     from: metres
-                      ? mode
-                        ? estimateLeg(mode, metres)
-                        : { mode: "walk" as const, min: Math.max(5, Math.round(metres / 75)), metres }
+                      ? /* No 交通方式 set: judged by distance, so a place in another
+                           city is not a twenty-four-hour walk. */
+                        estimateLeg(mode ?? (metres < 1200 ? "walk" : metres < 20000 ? "transit" : "drive"), metres)
                       : undefined,
                   },
                 ],

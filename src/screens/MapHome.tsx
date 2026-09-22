@@ -109,6 +109,7 @@ export function MapHome() {
         .sort((a, b) => distance(fix.at, a.at) - distance(fix.at, b.at))
         .slice(0, 3);
       setOsm(fresh);
+      if (fresh.length) setAutoFit(false);
     });
     return () => {
       live = false;
@@ -147,7 +148,12 @@ export function MapHome() {
   const showSights = filter === "all" || filter === "sight";
   const pins = useMemo<MapPin[]>(
     () => [
-      ...(filter === "all" || filter === "food" ? places.food : []).map((p) => placePin(p, pickedPlace)),
+      /* 全部 shows the six nearest restaurants: all twelve sit within a few
+         hundred metres of the blue dot and pile into one red blot at the zoom
+         that also fits the hotels. 餐廳 on its own shows them all, zoomed in. */
+      ...(filter === "food" ? places.food : filter === "all" ? places.food.slice(0, 6) : []).map((p) =>
+        placePin(p, pickedPlace),
+      ),
       ...(filter === "all" || filter === "stay" ? places.stay : []).map((p) => placePin(p, pickedPlace)),
       ...(showSights ? near : []).map(({ a }) => ({
         poi: a.poi,
@@ -264,7 +270,7 @@ export function MapHome() {
              result, and once when a late Overpass response arrives, undoing a
              drag. Both of those are the auto-recentre nobody wants, so the
              first flight or the first merged place ends the auto-fit. */
-          fit={autoFit && !flight && osm.length === 0}
+          fit={autoFit && !flight}
           /* Never grouped. On a map whose whole message is "these are the places
              with a guide", a bubble reading 3 is three places you cannot see. */
           spread
@@ -300,7 +306,12 @@ export function MapHome() {
                 key={f.id}
                 onClick={() => {
                   setFilter(f.id);
-                  setAutoFit(false);
+                  /* One re-frame onto what was asked for — the restaurants are
+                     a few hundred metres across, the hotels a few kilometres —
+                     then the map is the traveller's again. */
+                  setFlight(null);
+                  setAutoFit(true);
+                  window.setTimeout(() => setAutoFit(false), 400);
                   setPicked(null);
                   setPickedPlace(null);
                 }}

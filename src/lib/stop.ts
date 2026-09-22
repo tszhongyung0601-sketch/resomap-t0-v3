@@ -212,7 +212,8 @@ export function viewOf(stop: Stop): StopView | null {
         lng: p.lng,
         emoji: look.emoji,
         tint: look.tint,
-        stayMin: stay || (p.cat === "stay" ? 30 : 60),
+        /* Checking in is half an hour; a meal is an hour. */
+        stayMin: stop.stayMin || (p.cat === "stay" ? 30 : 60),
       };
     }
   }
