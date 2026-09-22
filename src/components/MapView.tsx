@@ -11,6 +11,7 @@ import {
 import { divIcon, type LatLngBoundsExpression } from "leaflet";
 import type { ReactNode } from "react";
 import { bounds, cluster } from "../lib/geo";
+import { PLACE_PIN } from "../lib/placePin";
 
 /**
  * The one map in the app.
@@ -80,6 +81,27 @@ export interface MapPin {
   context?: boolean;
   /** Drawn larger, with a ring. One at a time. */
   selected?: boolean;
+  /**
+   * V3 — a real restaurant or place to stay off OpenStreetMap. Each gets its own
+   * colour and glyph, so the filter above the map is a convenience and not the
+   * only way to tell the three kinds apart.
+   */
+  place?: "food" | "stay";
+}
+
+function placeIcon(kind: "food" | "stay", selected: boolean) {
+  const size = selected ? 42 : 32;
+  const { color, svg } = PLACE_PIN[kind];
+  const ring = selected
+    ? `box-shadow:0 0 0 5px ${color}33,0 4px 12px rgba(0,0,0,.3);`
+    : "box-shadow:0 2px 6px rgba(0,0,0,.25);";
+  return divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:99px;background:${color};
+      border:2px solid #fff;display:grid;place-items:center;${ring}">${svg}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
 }
 
 /**
@@ -141,6 +163,7 @@ function pinIcon(pins: MapPin[], activeId: string | null) {
   /* Checked before every other style: on the map home this is the only pin
      language there is, and it must not be overridden by `order` or `tone`. */
   if (p.audio) return audioIcon(Boolean(p.selected) || on);
+  if (p.place) return placeIcon(p.place, Boolean(p.selected) || on);
 
   if (p.context) {
     const d = p.poi.id === activeId ? 17 : 13;

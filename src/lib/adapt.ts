@@ -10,6 +10,12 @@ const SPEED: Record<LegMode, number> = {
   bus: 330,
   taxi: 620,
   drive: 700,
+  /* V3. Door-to-door, like the rest: a scooter parks at the door, a bus
+     makes you wait for it. lib/reorder.ts's estimateLeg is the one that
+     accounts for distance; these are only for the old re-measure paths. */
+  scooter: 450,
+  transit: 330,
+  self: 75,
 };
 
 const toMin = (v: string) => {

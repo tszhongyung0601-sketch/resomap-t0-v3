@@ -38,7 +38,9 @@ import { Expenses, Settle, resetReceipts } from "./screens/Expenses";
 import { resetHere } from "./lib/here";
 import { resetDocs } from "./lib/docs";
 import { clear, load, save, TRIPS_KEY } from "./lib/persist";
-import { resetDayEdits } from "./lib/dayEdits";
+import { editsFor, forget, key as dayKey, resetDayEdits } from "./lib/dayEdits";
+import { datesLabel, dayAfter } from "./lib/tripDates";
+import { estimateLeg } from "./lib/reorder";
 import { resetSaved } from "./lib/saved";
 import { Library } from "./screens/Library";
 import { resetReactions } from "./lib/reactions";
@@ -88,6 +90,7 @@ const Events = lazy(async () => ({ default: (await import("./screens/Events")).E
 const Chat = lazy(async () => ({ default: (await import("./screens/Chat")).Chat }));
 const DealsHub = lazy(async () => ({ default: (await import("./screens/DealsHub")).DealsHub }));
 const DealSearch = lazy(async () => ({ default: (await import("./screens/DealSearch")).DealSearch }));
+const Packing = lazy(async () => ({ default: (await import("./screens/Packing")).Packing }));
 const Documents = lazy(async () => ({ default: (await import("./screens/Documents")).Documents }));
 const Reviews = lazy(async () => ({ default: (await import("./screens/Reviews")).Reviews }));
 const Subscribe = lazy(async () => ({ default: (await import("./screens/Subscribe")).Subscribe }));
@@ -169,6 +172,7 @@ export default function App() {
           const at = s.findIndex((x) => sameRoute(x, r));
           return at >= 0 ? s.slice(0, at + 1) : [...s, r];
         }),
+      replace: (r) => setStack((s) => (s.length ? [...s.slice(0, -1), r] : [r])),
       back: () => setStack((s) => s.slice(0, -1)),
       tab: (t) => {
         setStack([]);
@@ -205,6 +209,10 @@ export default function App() {
               const prev = last.stops[last.stops.length - 1];
               const prevView = prev ? viewOf(prev) : null;
               const metres = prevView && view ? distance(prevView, view) : 0;
+              /* 部分更新 lands here: a day whose 交通方式 was set travels its
+                 new stops that way. The hand edit, when there is one, is where
+                 the traveller's choice lives. */
+              const mode = editsFor(dayKey(t.id, d.n))?.mode ?? d.mode;
               tracks[tracks.length - 1] = {
                 ...last,
                 stops: [
@@ -215,7 +223,9 @@ export default function App() {
                        exactly it lands is the traveller's call, not ours. */
                     at: addMinutes(prev?.at ?? "10:00", (prev?.stayMin ?? 0) + 20),
                     from: metres
-                      ? { mode: "walk" as const, min: Math.max(5, Math.round(metres / 75)), metres }
+                      ? mode
+                        ? estimateLeg(mode, metres)
+                        : { mode: "walk" as const, min: Math.max(5, Math.round(metres / 75)), metres }
                       : undefined,
                   },
                 ],
@@ -231,6 +241,39 @@ export default function App() {
            made the traveller trust their own memory of what they had picked. */
         say(view ? `✓ ${view.title}已加入 Day ${day}` : `✓ 已加入 Day ${day}`);
       },
+
+      addDay: (tripId) =>
+        setTrips((list) =>
+          list.map((t) => {
+            if (t.id !== tripId || t.days.length === 0) return t;
+            const last = t.days[t.days.length - 1];
+            const n = last.n + 1;
+            const days = [
+              ...t.days,
+              { n, ...dayAfter(last), tracks: [{ id: `${t.id}-d${n}-${Date.now()}`, who: [], stops: [] }] },
+            ];
+            return { ...t, days, nights: days.length - 1, dates: datesLabel(days) || t.dates };
+          }),
+        ),
+
+      removeDay: (tripId) =>
+        setTrips((list) =>
+          list.map((t) => {
+            if (t.id !== tripId || t.days.length <= 1) return t;
+            const gone = t.days[t.days.length - 1];
+            /* Its hand edits go with it — a Day 4 added back later is a new
+               day, and must not inherit the old one's reorder. */
+            forget(dayKey(t.id, gone.n));
+            const days = t.days.slice(0, -1);
+            return {
+              ...t,
+              days,
+              nights: days.length - 1,
+              dates: datesLabel(days) || t.dates,
+              today: Math.min(t.today, days.length),
+            };
+          }),
+        ),
 
       saveTrip: (trip) => {
         setTrips((l) => [trip, ...l.filter((t) => t.id !== trip.id)]);
@@ -374,7 +417,12 @@ export default function App() {
   else if (route?.k === "create") screen = <CreateTrip destId={route.destId} />;
   else if (route?.k === "stay") screen = <StayFlow destId={route.destId} />;
   else if (route?.k === "tickets") screen = <Tickets destId={route.destId} />;
-  else if (route?.k === "dealSearch") screen = <DealSearch q={route.q} cat={route.cat} />;
+  else if (route?.k === "dealSearch")
+    screen = <DealSearch key={`${route.q}|${route.cat}|${route.from ?? ""}`} q={route.q} cat={route.cat} from={route.from} to={route.to} />;
+  else if (route?.k === "packing") {
+    const t = trips.find((x) => x.id === route.tripId);
+    screen = t ? <Packing trip={t} /> : null;
+  }
   else if (route?.k === "product") screen = <ProductDetail id={route.id} />;
   else if (route?.k === "transport") screen = <TransportFlow destId={route.destId} />;
   else if (route?.k === "carrental") screen = <CarRentalFlow destId={route.destId} />;
@@ -386,7 +434,7 @@ export default function App() {
   else if (route?.k === "coupons") screen = <Coupons />;
   else if (route?.k === "coedit") screen = <CoEdit tripId={route.tripId} />;
   else if (route?.k === "business") screen = <BusinessDemo />;
-  else if (route?.k === "expenses") screen = <Expenses tripId={route.tripId} />;
+  else if (route?.k === "expenses") screen = <Expenses tripId={route.tripId} add={route.add} />;
   else if (route?.k === "settle") screen = <Settle tripId={route.tripId} />;
   else if (route?.k === "today") {
     const t = trips.find((x) => x.id === route.tripId);

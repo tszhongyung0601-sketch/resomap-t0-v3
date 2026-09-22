@@ -17,6 +17,11 @@ const TRAVEL_MODE: Record<LegMode, "walking" | "transit" | "driving"> = {
   bus: "transit",
   taxi: "driving",
   drive: "driving",
+  /* Google Maps has a two-wheeler mode only in some countries; driving is the
+     route a scooter can always take. */
+  scooter: "driving",
+  transit: "transit",
+  self: "walking",
 };
 
 /**

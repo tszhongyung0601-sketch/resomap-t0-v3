@@ -4,7 +4,7 @@ import { BY_PROVIDER } from "../data/providers";
 import { BY_OFFER } from "../data/affiliateOffers";
 import { BY_RENTAL, RENTAL_DISCLOSURE } from "../data/carRentals";
 import { BY_EVENT, EVENT_KINDS } from "../data/events";
-import type { Poi, Stop, StopRef } from "../types";
+import type { PlaceRef, Poi, Stop, StopRef } from "../types";
 
 /**
  * What a stop is, whatever kind of thing it points at.
@@ -75,6 +75,14 @@ const DEFAULT_STAY: Record<StopRef["kind"], number> = {
   offer: 240,
   rental: 20,
   event: 90,
+  place: 60,
+};
+
+/** What an OpenStreetMap place looks like on a row, by what it is. */
+export const PLACE_LOOK: Record<PlaceRef["cat"], { emoji: string; tint: string; label: string }> = {
+  food: { emoji: "🍴", tint: "#FDE7EA", label: "餐廳" },
+  stay: { emoji: "🛏️", tint: "#E6EBFF", label: "住宿" },
+  sight: { emoji: "📍", tint: "#E6EAF3", label: "景點" },
 };
 
 export function viewOf(stop: Stop): StopView | null {
@@ -190,6 +198,23 @@ export function viewOf(stop: Stop): StopView | null {
         disclosure: "Demo・虛構活動",
       };
     }
+    case "place": {
+      const p = ref.place;
+      const look = PLACE_LOOK[p.cat] ?? PLACE_LOOK.sight;
+      return {
+        id: stop.id,
+        kind: "place",
+        title: p.name,
+        /* Where it came from, on the row itself. It is a real shop, and it is
+           not one ResoMap has any arrangement with. */
+        subtitle: `${p.sub || look.label}・OpenStreetMap`,
+        lat: p.lat,
+        lng: p.lng,
+        emoji: look.emoji,
+        tint: look.tint,
+        stayMin: stay || (p.cat === "stay" ? 30 : 60),
+      };
+    }
   }
 }
 
@@ -220,6 +245,8 @@ export function refKey(ref: StopRef): string {
       return `rental:${ref.rentalId}`;
     case "event":
       return `event:${ref.eventId}`;
+    case "place":
+      return `place:${ref.place.id}`;
   }
 }
 

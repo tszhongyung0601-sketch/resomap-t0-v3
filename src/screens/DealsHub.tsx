@@ -5,7 +5,7 @@ import { DealSearchField } from "../components/DealSearchField";
 import { Note, Row, Screen, Section } from "../components/ui";
 import { poi } from "../data";
 import { dest } from "../data/destinations";
-import { SEARCH_CATS, catLabel, type SearchCat } from "../data/affiliateLinks";
+import { HUB_CATS, SEARCH_CATS, catLabel, type SearchCat } from "../data/affiliateLinks";
 import { clearRecent, pushRecent, readRecent, type RecentSearch } from "../lib/dealSearch";
 import { focusTrip } from "../lib/trip";
 import { PARTNERS } from "../data/affiliatePartners";
@@ -123,7 +123,7 @@ export function DealsHub() {
           already typed it is also the search — making somebody tap a tile and
           then 搜尋 is one tap too many for a decision they have already made. */}
       <div className="grid grid-cols-4 gap-2 px-4 pt-4" role="radiogroup" aria-label="搜尋分類">
-        {SEARCH_CATS.map((c) => {
+        {HUB_CATS.map((c) => {
           const on = c.id === cat;
           return (
             <button

@@ -3,7 +3,9 @@ import { story } from "../data/stories";
 import { PoiImage, PoiThumb } from "../components/Cover";
 import { Empty, Headphones, Screen, StoryBadge, TopBar } from "../components/ui";
 import { playLabel, rating } from "../lib/story";
-import { useSaved } from "../lib/saved";
+import { togglePlace, useSaved } from "../lib/saved";
+import { openPlaceDirections } from "../lib/maps";
+import { PLACE_LOOK } from "../lib/stop";
 import { useNav } from "../nav";
 import { POI_KIND_LABELS, type Poi, type Story } from "../types";
 
@@ -20,7 +22,7 @@ import { POI_KIND_LABELS, type Poi, type Story } from "../types";
  */
 export function Saved() {
   const nav = useNav();
-  const { pois, stories } = useSaved();
+  const { pois, stories, places: spots } = useSaved();
 
   /* Read through the data rather than trusting the stored ids: a saved id that
      no longer resolves would throw inside poi() in DEV, and a shelf is not worth
@@ -28,7 +30,7 @@ export function Saved() {
   const places = pois.map((id) => POIS.find((p) => p.id === id)).filter(Boolean) as Poi[];
   const guides = stories.map((id) => story(id)).filter(Boolean) as Story[];
 
-  const nothing = places.length === 0 && guides.length === 0;
+  const nothing = places.length === 0 && guides.length === 0 && spots.length === 0;
 
   return (
     <Screen>
@@ -70,6 +72,49 @@ export function Saved() {
               </div>
             )}
           </Section>
+
+          {/* Restaurants and places to stay from the home map. No page of their
+              own to open — ResoMap has no record of them — so the row offers
+              the one thing that works, directions, and a way to let go. */}
+          {spots.length > 0 && (
+            <Section title="餐廳・住宿" count={spots.length}>
+              <div className="space-y-2 px-5">
+                {spots.map((p) => {
+                  const look = PLACE_LOOK[p.cat] ?? PLACE_LOOK.sight;
+                  return (
+                    <div key={p.id} className="flex items-center gap-3 rounded-2xl bg-surface p-2.5">
+                      <span
+                        className="grid size-14 shrink-0 place-items-center rounded-xl text-[24px]"
+                        style={{ background: look.tint }}
+                        aria-hidden
+                      >
+                        {look.emoji}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[14.5px] font-semibold text-ink">{p.name}</div>
+                        <div className="mt-0.5 truncate text-[12.5px] text-ink-3">
+                          {p.sub || look.label} · OpenStreetMap
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => openPlaceDirections({ name: p.name, area: "", lat: p.lat, lng: p.lng })}
+                        className="min-h-11 shrink-0 rounded-full bg-bg px-3 text-[13px] font-bold text-ink active:bg-surface-2"
+                      >
+                        導航
+                      </button>
+                      <button
+                        onClick={() => togglePlace(p)}
+                        aria-label={`取消收藏${p.name}`}
+                        className="grid size-11 shrink-0 place-items-center rounded-full text-[18px] text-brand active:bg-surface-2"
+                      >
+                        ♥
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
 
           <Section title="語音導覽" count={guides.length}>
             {guides.length === 0 ? (

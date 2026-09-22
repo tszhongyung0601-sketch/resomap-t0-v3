@@ -26,7 +26,7 @@ export type Route =
   | { k: "transport"; destId?: string }
   | { k: "carrental"; destId?: string }
   | { k: "service"; id: ServiceId }
-  | { k: "expenses"; tripId: string }
+  | { k: "expenses"; tripId: string; add?: boolean }
   | { k: "settle"; tripId: string }
   | { k: "today"; tripId: string }
   /* `tab` lets a caller land on a specific category. 在地優惠 on the home grid
@@ -81,7 +81,9 @@ export type Route =
   | { k: "subscribe"; audience?: PlanAudience }
   | { k: "pro" }
   /* V3 — 更多優惠的搜尋結果：一個關鍵字、一個分類，交給 Klook 和 KKday。 */
-  | { k: "dealSearch"; q: string; cat: SearchCat };
+  | { k: "dealSearch"; q: string; cat: SearchCat; from?: string; to?: string }
+  /* V3 round 2 — 行李清單 for one trip. */
+  | { k: "packing"; tripId: string };
 
 /* 導覽庫 replaced 優惠 in the bar. Deals did not go away — it moved behind the
    trip that gives it a reason to exist, which is what MODEL B claims anyway:
@@ -101,6 +103,12 @@ export type DealsTab = "reco" | "ticket" | "stay" | "transport" | "car" | "more"
  */
 export interface Nav {
   go: (r: Route) => void;
+  /**
+   * Swap the screen on top for another, without growing the stack. The trip's
+   * 總覽 / 第 N 天 tabs are one screen to the traveller, so moving between
+   * them must not make 返回 walk back through every tab they looked at.
+   */
+  replace: (r: Route) => void;
   back: () => void;
   /** Switch tab and clear the stack. */
   tab: (t: Tab) => void;
@@ -151,6 +159,10 @@ export interface Nav {
    * a caller never fires its own confirmation.
    */
   addStop: (tripId: string, day: number, ref: StopRef) => void;
+  /** V3 — ＋ on the trip's tabs: an empty day after the last one. */
+  addDay: (tripId: string) => void;
+  /** V3 — － on the trip's tabs: drop the last day. The caller asks first. */
+  removeDay: (tripId: string) => void;
   /** Create the demo trip for a destination and open it. */
   createTrip: (destId: string) => void;
   /**

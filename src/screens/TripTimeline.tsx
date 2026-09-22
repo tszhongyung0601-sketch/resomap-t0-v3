@@ -8,15 +8,16 @@ import {
   ME,
   POIS,
 } from "../data";
-import { EXPENSES } from "../data/expenses";
 import { DealCard } from "../components/DealCard";
 import { PoiImage, StopImage } from "../components/Cover";
 import { dur } from "../lib/adapt";
 import { distance, km } from "../lib/geo";
 import {
+  applyDayMode,
   applyEdits,
   diffDay,
   earliestArrival,
+  sortDay,
   moveStop,
   removeStop,
   setTime,
@@ -24,7 +25,6 @@ import {
   toMinutes,
   trackOffset,
 } from "../lib/reorder";
-import { total } from "../lib/split";
 import { finishedPois, track } from "../lib/track";
 import { audiosFor, hasAudio } from "../lib/audio";
 import { useDocs } from "../lib/docs";
@@ -36,6 +36,13 @@ import type { StopView } from "../lib/stop";
 import { useI18n } from "../i18n";
 import { useNav } from "../nav";
 import { editsFor, forget, key, remember, useEditedTrip } from "../lib/dayEdits";
+import type { DayEdits } from "../lib/reorder";
+import { ModeSheet, SortSheet, StopOffer, TripTabs } from "../components/TripPlanBits";
+import { MODE_ICON } from "../lib/modes";
+import { useReceipts } from "./Expenses";
+import { usePacking } from "../lib/packing";
+import { iso, shortLabel, tripRange } from "../lib/tripDates";
+import type { SearchCat } from "../data/affiliateLinks";
 
 import {
   Avatar,
@@ -63,6 +70,15 @@ import {
 } from "../types";
 
 /* ------------------------------------------------------------- trip home */
+
+/* 旅遊指南. `cat` is the results-screen category; the folder has none. */
+const GUIDE: { label: string; icon: string; cat?: SearchCat }[] = [
+  { label: "機票", icon: "✈️", cat: "flight" },
+  { label: "住宿", icon: "🏨", cat: "hotel" },
+  { label: "交通", icon: "🚆", cat: "transport" },
+  { label: "租車", icon: "🚗", cat: "car" },
+  { label: "檔案夾", icon: "📁" },
+];
 
 /**
  * The overview of one trip: who is coming, the days, and then the things the
@@ -102,7 +118,10 @@ export function TripHome({ trip: source }: { trip: Trip }) {
   /* The figure is the sum of this trip's receipts and nothing else — no
      budget, no projection, no "還差 N 元". A trip with no bills says so rather
      than showing NT$ 0, which reads as a total somebody worked out. */
-  const bills = EXPENSES.filter((e) => e.tripId === trip.id);
+  const bills = useReceipts(trip.id);
+  const city = dest(trip.destId)?.name ?? "";
+  const range = tripRange(trip);
+  const dates = { from: iso(range.from), to: iso(range.to) };
   /* The roster minus the person holding the phone — the same rule 我的 already
      states in prose: counting yourself as your own 旅伴 is a small lie, and this
      screen was telling it. 東京 carries `travellers: [mickey, amy, john, susan]`
@@ -117,6 +136,7 @@ export function TripHome({ trip: source }: { trip: Trip }) {
   /* One request for the trip, not one per card. The destination's own
      coordinates, because a trip to 東京 is not asking about 新店. */
   const sky = useTripSky(trip);
+  const pack = usePacking(trip, sky);
 
   useEffect(() => {
     track("trip_view", { tripId: trip.id, destId: trip.destId });
@@ -142,9 +162,10 @@ export function TripHome({ trip: source }: { trip: Trip }) {
             }
           />
         }
+        below={<TripTabs trip={trip} active="overview" />}
       />
 
-      <div className="num px-5 text-[14px] text-ink-3">
+      <div className="num px-5 pt-3 text-[14px] text-ink-3">
         {trip.dates}
         {trip.phase === "ongoing" && (
           <span className="font-semibold text-brand"> · 今天是第 {trip.today} 天</span>
@@ -164,6 +185,79 @@ export function TripHome({ trip: source }: { trip: Trip }) {
         </button>
       )}
 
+      {/* 去趣's 旅遊指南, with ResoMap's two platforms behind it. Every tile but
+          the folder opens the same results screen as 更多優惠, already filled
+          in with where and when this trip is — the traveller should not have to
+          type 台南 and 10/20 into a trip that already says 台南 and 10/20. */}
+      <Section title="旅遊指南" tight>
+        <div className="mx-5 grid grid-cols-5 rounded-2xl bg-surface px-1 py-2.5">
+          {GUIDE.map((g) => (
+            <button
+              key={g.label}
+              onClick={() =>
+                g.cat
+                  ? nav.go({ k: "dealSearch", q: city, cat: g.cat, ...dates })
+                  : nav.go({ k: "docs" })
+              }
+              className="relative flex min-h-[78px] flex-col items-center justify-center gap-1.5 rounded-xl active:bg-surface-2"
+            >
+              <span className="text-[30px] leading-none" aria-hidden>
+                {g.icon}
+              </span>
+              <span className="text-[12.5px] font-semibold text-ink-2">{g.label}</span>
+              {!g.cat && papers.length > 0 && (
+                <span className="num absolute right-2 top-1.5 rounded-full bg-ink px-1.5 text-[10.5px] font-bold text-white">
+                  {papers.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="px-5 pt-2 text-[12px] leading-relaxed text-ink-3">
+          帶入{city}・{shortLabel(range.from)} – {shortLabel(range.to)}，到 Klook、KKday 比較。
+        </p>
+      </Section>
+
+      {/* Two small cards side by side, as 去趣 has them: the ledger, with a ＋
+          that goes straight to recording something, and the packing list. */}
+      <div className="mt-4 grid grid-cols-2 gap-3 px-5">
+        <div className="relative rounded-2xl bg-surface">
+          <button
+            onClick={() => nav.go({ k: "expenses", tripId: trip.id })}
+            className="block min-h-[112px] w-full rounded-2xl p-4 text-left active:bg-surface-2"
+          >
+            <span className="block text-[15px] font-bold text-ink">共同記帳</span>
+            <span className="mt-3 block">
+              <span className="num text-[28px] font-bold text-ink">{bills.length}</span>
+              <span className="ml-1 text-[13px] text-ink-3">筆花費</span>
+            </span>
+          </button>
+          <button
+            onClick={() => nav.go({ k: "expenses", tripId: trip.id, add: true })}
+            aria-label="記一筆"
+            className="absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-white text-[22px] text-ink shadow-[0_2px_8px_rgba(0,0,0,.1)] active:bg-surface-2"
+          >
+            ＋
+          </button>
+        </div>
+        <button
+          onClick={() => nav.go({ k: "packing", tripId: trip.id })}
+          className="block min-h-[112px] rounded-2xl bg-surface p-4 text-left active:bg-surface-2"
+        >
+          <span className="flex items-center">
+            <span className="flex-1 text-[15px] font-bold text-ink">行李清單</span>
+            <span className="text-[15px] text-ink-3" aria-hidden>
+              ›
+            </span>
+          </span>
+          <span className="mt-3 block">
+            <span className="num text-[28px] font-bold text-ink">{pack.done}</span>
+            <span className="num text-[16px] font-semibold text-ink-3"> / {pack.items.length}</span>
+            <span className="ml-1 text-[13px] text-ink-3">已打包</span>
+          </span>
+        </button>
+      </div>
+
       <Section title="每日行程">
         <div className="space-y-3 px-5">
           {trip.days.map((d) => (
@@ -172,15 +266,7 @@ export function TripHome({ trip: source }: { trip: Trip }) {
         </div>
       </Section>
 
-      {/* Money sits with the plan, not in a wallet tab: the question "誰付了
-          什麼" only ever comes up while looking at the days it was spent on. */}
       <div className="mt-4">
-        <Row
-          icon="💰"
-          label="旅費"
-          value={bills.length > 0 ? `NT$ ${total(bills).toLocaleString()}` : "還沒有紀錄"}
-          onClick={() => nav.go({ k: "expenses", tripId: trip.id })}
-        />
         {/* 「模擬」in the value, not only inside the screen it opens. Somebody
             scanning this list should not have to tap through to find out that
             the cloud sync is a demo of the idea rather than the thing itself. */}
@@ -189,16 +275,6 @@ export function TripHome({ trip: source }: { trip: Trip }) {
           label="雲端同步・共同編輯"
           value="模擬"
           onClick={() => nav.go({ k: "coedit", tripId: trip.id })}
-        />
-        {/* The documents filed under this trip. Shown even at zero, because
-            the row is also how you get to the scanner — and a count that
-            only appears once it is non-zero is a feature you have to already
-            know about to find. */}
-        <Row
-          icon="🛂"
-          label="旅行文件"
-          value={papers.length > 0 ? papers.length + " 份" : "機票・住宿・eSIM"}
-          onClick={() => nav.go({ k: "docs" })}
         />
       </div>
 
@@ -292,7 +368,7 @@ function DayCard({ trip, day, sky }: { trip: Trip; day: Day; sky: DayWeather | n
 
   return (
     <Card
-      onClick={() => nav.go({ k: "day", tripId: trip.id, n: day.n })}
+      onClick={() => nav.replace({ k: "day", tripId: trip.id, n: day.n })}
       className="p-4"
     >
       <div className="flex items-baseline gap-2">
@@ -388,6 +464,10 @@ export function DayPlan({
   const [editing, setEditing] = useState(false);
   /** Which stop's clock is open. */
   const [picking, setPicking] = useState<string | null>(null);
+  /** 設定交通方式 / 一鍵排序, when open. */
+  const [sheet, setSheet] = useState<"mode" | "sort" | null>(null);
+  /** What the day looked like before the last 全部更新 or 一鍵排序, for 復原. */
+  const [undo, setUndo] = useState<{ text: string; prev: DayEdits | undefined } | null>(null);
   /** An AI proposal is open on this day, and owns it until it is answered. */
   const proposing = Boolean(banner);
 
@@ -402,6 +482,8 @@ export function DayPlan({
   useEffect(() => {
     setEditing(false);
     setPicking(null);
+    setSheet(null);
+    setUndo(null);
   }, [trip.id, day]);
 
   /* Nor does it survive an AI proposal. `editMode` already stands down while a
@@ -524,7 +606,7 @@ export function DayPlan({
     <Screen>
       <TopBar
         title={trip.title}
-        onBack={() => nav.go({ k: "trip", id: trip.id })}
+        onBack={nav.back}
         right={
           <>
             {/* Text, not a filled pill. Turning the plan orange would put the
@@ -548,21 +630,7 @@ export function DayPlan({
             />
           </>
         }
-        below={
-          <div className="flex gap-1.5 overflow-x-auto px-5 pb-3 no-scrollbar">
-            {trip.days.map((x) => (
-              <button
-                key={x.n}
-                onClick={() => nav.go({ k: "day", tripId: trip.id, n: x.n })}
-                className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3.5 text-[13.5px] font-semibold transition ${
-                  x.n === day ? "bg-ink text-white" : "bg-surface text-ink-2 active:bg-surface-2"
-                }`}
-              >
-                Day {x.n}
-              </button>
-            ))}
-          </div>
-        }
+        below={<TripTabs trip={trip} active={day} />}
       />
 
       {banner && <div className="px-5 pt-1">{banner}</div>}
@@ -575,6 +643,48 @@ export function DayPlan({
         </span>
         <SkyChip sky={skyFor(sky, d.date)} />
       </div>
+
+      {/* 去趣's two controls, where 去趣 puts them: how the day gets around on
+          the left, the shortest order on the right. Both re-time the day, and
+          both leave a 復原 behind them. */}
+      {!editMode && stops.length > 0 && (
+        <div className="flex items-center justify-between gap-2 px-5 pt-3">
+          <button
+            onClick={() => setSheet("mode")}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-surface px-3.5 text-[14px] font-semibold text-ink active:bg-surface-2"
+          >
+            <span aria-hidden>{d.mode ? MODE_ICON[d.mode] : "🧭"}</span>
+            {d.mode ? LEG_LABEL[d.mode] : "交通方式"}
+            <span className="text-[11px] text-ink-3" aria-hidden>
+              ▾
+            </span>
+          </button>
+          <button
+            onClick={() => setSheet("sort")}
+            disabled={stops.length < 3 || split || Boolean(shared)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 text-[14px] font-bold text-white active:opacity-85 disabled:opacity-35"
+          >
+            <span aria-hidden>⚡</span>
+            一鍵排序
+          </button>
+        </div>
+      )}
+
+      {undo && !editMode && (
+        <div className="mx-5 mt-3 flex items-center gap-3 rounded-2xl bg-ink px-4 py-2.5 text-white">
+          <span className="flex-1 text-[13px]">{undo.text}</span>
+          <button
+            onClick={() => {
+              if (undo.prev) remember(trip.id, day, undo.prev);
+              else forget(key(trip.id, day));
+              setUndo(null);
+            }}
+            className="min-h-9 shrink-0 rounded-full px-2 text-[13.5px] font-bold text-white underline"
+          >
+            復原
+          </button>
+        </div>
+      )}
 
       {/* In the page, not floating over it. A plan that changes is the normal
           case on a trip, so the way to change it belongs in the reading order
@@ -636,6 +746,36 @@ export function DayPlan({
         </div>
       </div>
 
+      {sheet === "mode" && (
+        <ModeSheet
+          current={d.mode}
+          onClose={() => setSheet(null)}
+          onApply={(mode, scope) => {
+            const prev = editsFor(key(trip.id, day));
+            keep((cur) => applyDayMode(cur, mode, scope));
+            setUndo(
+              scope === "all"
+                ? { text: `已改成${LEG_LABEL[mode]}，時間已重算`, prev }
+                : { text: `之後新加的景點會用${LEG_LABEL[mode]}`, prev },
+            );
+            setSheet(null);
+          }}
+        />
+      )}
+
+      {sheet === "sort" && (
+        <SortSheet
+          stops={stops}
+          onClose={() => setSheet(null)}
+          onSort={(startId, endId) => {
+            const prev = editsFor(key(trip.id, day));
+            keep((cur) => sortDay(cur, startId, endId));
+            setUndo({ text: "已排成最順的路線，時間已重算", prev });
+            setSheet(null);
+          }}
+        />
+      )}
+
       {picked && (
         <TimeSheet
           key={picked.id}
@@ -686,6 +826,7 @@ function Timeline({ stops, planned }: { stops: Stop[]; planned: Set<string> }) {
         <div key={s.id}>
           {i > 0 && s.from && <Leg to={s} via={vias[i]} />}
           <StopRow stop={s} prev={i > 0 ? stops[i - 1] : undefined} />
+          <StopOffer stop={s} />
         </div>
       ))}
     </div>
@@ -698,6 +839,9 @@ const LEG_ICON: Record<LegMode, string> = {
   bus: "🚌",
   taxi: "🚕",
   drive: "🚗",
+  scooter: "🛵",
+  transit: "🚆",
+  self: "🧭",
 };
 
 /**
@@ -717,7 +861,8 @@ function Leg({ to, via }: { to: Stop; via: Poi | null }) {
     <div className="pl-[56px]">
       <div className="border-l-[1.5px] border-line py-2 pl-3.5">
         <div className="text-[12.5px] text-ink-3">
-          {LEG_ICON[mode]} {LEG_LABEL[mode]} {min} 分鐘 · {km(metres)}
+          {LEG_ICON[mode]} {LEG_LABEL[mode]}
+          {mode === "self" ? "" : ` 約 ${min} 分鐘`} · {km(metres)}
         </div>
         {via && (
           <div className="mt-1 text-[12.5px] leading-relaxed text-ink-3">

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { PlaceRef } from "../types";
 
 /**
  * What the traveller has kept.
@@ -25,9 +26,20 @@ interface Saved {
   stories: string[];
   /** Hotel and tour listings on somebody else's platform. */
   offers: string[];
+  /** V3 — OpenStreetMap places from the home map. Stored whole: there is no
+      table to look an id up in later. */
+  places: PlaceRef[];
 }
 
-const EMPTY: Saved = { pois: [], stories: [], offers: [] };
+const EMPTY: Saved = { pois: [], stories: [], offers: [], places: [] };
+
+const isPlace = (x: unknown): x is PlaceRef =>
+  !!x &&
+  typeof x === "object" &&
+  typeof (x as PlaceRef).id === "string" &&
+  typeof (x as PlaceRef).name === "string" &&
+  typeof (x as PlaceRef).lat === "number" &&
+  typeof (x as PlaceRef).lng === "number";
 
 function read(): Saved {
   try {
@@ -40,6 +52,7 @@ function read(): Saved {
       /* Absent in anything written before offers were savable. Reading a
          missing key as an empty list is the whole migration. */
       offers: Array.isArray(parsed.offers) ? parsed.offers.filter((x) => typeof x === "string") : [],
+      places: Array.isArray(parsed.places) ? parsed.places.filter(isPlace) : [],
     };
   } catch {
     /* Corrupt or unavailable storage. An empty shelf is a survivable answer;
@@ -84,6 +97,14 @@ export const togglePoi = (id: string) => commit({ ...state, pois: toggle(state.p
 export const toggleStory = (id: string) => commit({ ...state, stories: toggle(state.stories, id) });
 
 export const toggleOffer = (id: string) => commit({ ...state, offers: toggle(state.offers, id) });
+
+export const togglePlace = (p: PlaceRef) =>
+  commit({
+    ...state,
+    places: state.places.some((x) => x.id === p.id)
+      ? state.places.filter((x) => x.id !== p.id)
+      : [...state.places, p],
+  });
 
 export const isPoiSaved = (id: string) => state.pois.includes(id);
 export const isStorySaved = (id: string) => state.stories.includes(id);

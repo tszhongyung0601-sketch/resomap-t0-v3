@@ -1,6 +1,6 @@
 import { distance } from "./geo";
 import { stopKey, viewOf } from "./stop";
-import type { Day, Leg, LegMode, Stop, Track } from "../types";
+import type { Day, DayMode, Leg, LegMode, Stop, Track } from "../types";
 
 /**
  * Editing one day by hand: move a stop, drop a stop, change a time.
@@ -52,6 +52,12 @@ const SPEED: Record<LegMode, number> = {
   bus: 330,
   taxi: 620,
   drive: 700,
+  /* V3. Door-to-door, like the rest: a scooter parks at the door, a bus
+     makes you wait for it. lib/reorder.ts's estimateLeg is the one that
+     accounts for distance; these are only for the old re-measure paths. */
+  scooter: 450,
+  transit: 330,
+  self: 75,
 };
 
 /** Below this nobody boards anything — adapt.ts uses the same threshold. */
@@ -169,10 +175,35 @@ function retime(stops: Stop[], wishes: Map<string, number | null>): Stop[] {
   return out;
 }
 
-const rebuild = (track: Track, after: Stop[], wishes: Map<string, number | null>): Track => ({
+/**
+ * `legs` are the traveller's own choices about how a pair of neighbours is
+ * travelled — 設定交通方式 or 一鍵排序 — keyed by `prev>next`. They are laid
+ * over whatever `relegs` measured, and only while that pair is still adjacent:
+ * a leg decided for 神農街 → 赤崁樓 means nothing once they are apart.
+ */
+const rebuild = (
+  track: Track,
+  after: Stop[],
+  wishes: Map<string, number | null>,
+  legs?: Record<string, Leg>,
+): Track => ({
   ...track,
-  stops: retime(relegs(track.stops, after), wishes),
+  stops: retime(overlay(relegs(track.stops, after), legs), wishes),
 });
+
+function overlay(stops: Stop[], legs?: Record<string, Leg>): Stop[] {
+  if (!legs) return stops;
+  return stops.map((s, i) => {
+    if (i === 0) return s;
+    const leg = legs[pairKey(stops[i - 1].id, s.id)];
+    return leg ? { ...s, from: leg } : s;
+  });
+}
+
+const pairKey = (a: string, b: string) => `${a}>${b}`;
+
+const sameLeg = (a?: Leg, b?: Leg) =>
+  a === b || (!!a && !!b && a.mode === b.mode && a.min === b.min && a.metres === b.metres);
 
 const patch = (day: Day, index: number, track: Track): Day => ({
   ...day,
@@ -324,6 +355,10 @@ export interface DayEdits {
   at: Record<string, string>;
   /** Stop id -> the day's own description of it, at the time of the edit. */
   base: Record<string, string>;
+  /** V3 — `prev>next` -> how that pair is travelled, when the traveller chose. */
+  legs?: Record<string, Leg>;
+  /** V3 — the day's 交通方式, when the traveller set one. */
+  mode?: DayMode;
 }
 
 /* `stopKey` rather than `poiId`: a day holding two hire cars from different
@@ -364,7 +399,25 @@ export function diffDay(base: Day, edited: Day): DayEdits {
     }
   }
 
-  return { order, gone, at, base: snapshot };
+  /* A leg is recorded when the traveller's day travels a pair differently
+     from how the trip itself does — including every pair the trip does not
+     have at all, which is what a re-sorted day is made of. */
+  const legs: Record<string, Leg> = {};
+  for (const track of edited.tracks) {
+    const before = base.tracks.find((b) => b.id === track.id);
+    for (let i = 1; i < track.stops.length; i++) {
+      const s = track.stops[i];
+      const prev = track.stops[i - 1];
+      const j = before?.stops.findIndex((x) => x.id === s.id) ?? -1;
+      const was = j > 0 && before?.stops[j - 1].id === prev.id ? before.stops[j] : undefined;
+      if (s.from && !sameLeg(was?.from, s.from)) legs[pairKey(prev.id, s.id)] = s.from;
+    }
+  }
+
+  const out: DayEdits = { order, gone, at, base: snapshot };
+  if (Object.keys(legs).length) out.legs = legs;
+  if (edited.mode && edited.mode !== base.mode) out.mode = edited.mode;
+  return out;
 }
 
 /**
@@ -397,6 +450,7 @@ export function applyEdits(day: Day, edits: DayEdits): Day | null {
 
   return {
     ...day,
+    mode: edits.mode ?? day.mode,
     tracks: day.tracks.map((track) => {
       const ids = edits.order[track.id] ?? track.stops.map((s) => s.id);
       const taken = new Set<string>();
@@ -425,10 +479,175 @@ export function applyEdits(day: Day, edits: DayEdits): Day | null {
          property this file gets to assume about data it did not write. */
       const same =
         wishes.size === 0 &&
+        !edits.legs &&
         next.length === track.stops.length &&
         next.every((s, i) => s === track.stops[i]);
 
-      return same ? track : rebuild(track, next, wishes);
+      return same ? track : rebuild(track, next, wishes, edits.legs);
     }),
   };
+}
+
+/* ------------------------------------------------ V3: 交通方式 and 一鍵排序 */
+
+/**
+ * How long a leg takes in a given mode, from a straight-line distance.
+ *
+ * A road is longer than a crow's flight, so the distance is stretched first,
+ * then divided by a door-to-door speed that rises once a trip leaves town —
+ * nobody rides a scooter from 武嶺 to 日月潭 at city speed. The fixed minutes
+ * are the part of a journey that is not moving: parking, or waiting for a bus.
+ *
+ * Estimates, and labelled as such wherever they are shown; the phone's map app
+ * is one tap away for the real figure.
+ */
+export function estimateLeg(mode: LegMode, metres: number, prior?: Leg): Leg {
+  switch (mode) {
+    case "walk":
+      return { mode, metres, min: Math.max(5, Math.round((metres * 1.25) / 75)) };
+    case "scooter": {
+      const road = metres * 1.3;
+      return { mode, metres, min: Math.max(5, Math.round(road / (road > 15000 ? 700 : 420)) + 3) };
+    }
+    case "drive": {
+      const road = metres * 1.3;
+      return { mode, metres, min: Math.max(5, Math.round(road / (road > 15000 ? 1000 : 480)) + 5) };
+    }
+    case "transit": {
+      const road = metres * 1.3;
+      return { mode, metres, min: Math.max(10, Math.round(road / (road > 15000 ? 1100 : 300)) + 10) };
+    }
+    /* 自行安排 has no clock of its own. It keeps whatever time the leg already
+       had, so choosing it never moves a stop — it only stops the app from
+       pretending to know how the traveller will get there. */
+    case "self":
+      return { mode, metres, min: prior?.min ?? Math.max(5, Math.round(metres / 75)) };
+    default:
+      return { mode, metres, min: Math.max(1, Math.round(metres / SPEED[mode])) };
+  }
+}
+
+/** The leg a newly added or re-sorted stop gets: the day's mode when there is one. */
+function legFor(from: Stop, to: Stop, mode: DayMode | undefined): Leg {
+  if (!mode) return legBetween(from, to, to.from?.mode);
+  const a = viewOf(from);
+  const b = viewOf(to);
+  if (!a || !b) return to.from ?? { mode, metres: 0, min: 0 };
+  return estimateLeg(mode, distance(a, b), to.from);
+}
+
+/**
+ * The clock rebuilt from the first stop — used only when the traveller asked
+ * for it with 全部更新 or 一鍵排序.
+ *
+ * This is the one place that breaks the file's first rule on purpose. Dragging
+ * a stop shifts later stops only as far as they must move and never pulls one
+ * earlier; asking to re-plan the whole day by scooter is asking for the whole
+ * day to be re-timed, earlier as well as later, the way 去趣 does. The first
+ * stop keeps its time, because that is when the day starts.
+ */
+function cascade(stops: Stop[]): Stop[] {
+  const out: Stop[] = [];
+  for (let i = 0; i < stops.length; i++) {
+    const s = stops[i];
+    if (i === 0) {
+      out.push(s);
+      continue;
+    }
+    const prev = out[i - 1];
+    const at = toClock(toMinutes(prev.at) + prev.stayMin + (s.from?.min ?? 0));
+    out.push(at === s.at ? s : { ...s, at });
+  }
+  return out;
+}
+
+/**
+ * 設定交通方式.
+ *
+ * `all` re-travels every leg of the day in the new mode and re-times it;
+ * `partial` only records the mode, for the stops added after this — the ones
+ * already in the day keep exactly how they were travelled.
+ */
+export function applyDayMode(day: Day, mode: DayMode, scope: "all" | "partial"): Day {
+  if (scope === "partial") return { ...day, mode };
+  return {
+    ...day,
+    mode,
+    tracks: day.tracks.map((track) => {
+      const stops = track.stops.map((s, i) =>
+        i === 0 ? s : { ...s, from: legFor(track.stops[i - 1], s, mode) },
+      );
+      return { ...track, stops: mode === "self" ? stops : cascade(stops) };
+    }),
+  };
+}
+
+/**
+ * 一鍵排序: the shortest order through the day's stops.
+ *
+ * `startId` stays first and `endId`, when given, stays last — the traveller
+ * picks both, because only they know that the day starts at the hotel or has
+ * to end at the station. Nearest-neighbour builds the route and 2-opt removes
+ * its crossings; with a dozen stops at most that is exact enough and instant.
+ *
+ * One track only. On a split day the tracks are two groups of people, and
+ * sorting across them is a decision about who goes where.
+ */
+export function sortDay(day: Day, startId: string, endId: string | null): Day {
+  if (day.tracks.length !== 1) return day;
+  const track = day.tracks[0];
+  const byId = new Map(track.stops.map((s) => [s.id, s]));
+  const start = byId.get(startId);
+  if (!start) return day;
+  const end = endId && endId !== startId ? byId.get(endId) : undefined;
+
+  const where = (s: Stop) => viewOf(s);
+  const gap = (a: Stop, b: Stop) => {
+    const va = where(a);
+    const vb = where(b);
+    return va && vb ? distance(va, vb) : 0;
+  };
+
+  const rest = track.stops.filter((s) => s !== start && s !== end);
+  const route: Stop[] = [start];
+  const left = [...rest];
+  while (left.length) {
+    const here = route[route.length - 1];
+    let best = 0;
+    for (let i = 1; i < left.length; i++) if (gap(here, left[i]) < gap(here, left[best])) best = i;
+    route.push(left.splice(best, 1)[0]);
+  }
+  if (end) route.push(end);
+
+  /* 2-opt, never touching the pinned ends. */
+  const lastFree = end ? route.length - 2 : route.length - 1;
+  let improved = true;
+  let guard = 0;
+  while (improved && guard++ < 50) {
+    improved = false;
+    for (let i = 1; i < lastFree; i++) {
+      for (let k = i + 1; k <= lastFree; k++) {
+        const a = route[i - 1];
+        const b = route[i];
+        const c = route[k];
+        const d = route[k + 1];
+        const before = gap(a, b) + (d ? gap(c, d) : 0);
+        const after = gap(a, c) + (d ? gap(b, d) : 0);
+        if (after + 1 < before) {
+          route.splice(i, k - i + 1, ...route.slice(i, k + 1).reverse());
+          improved = true;
+        }
+      }
+    }
+  }
+
+  /* The first stop of the sorted day starts when the old first stop did —
+     the day still begins at the same hour, whatever now comes first. */
+  const startAt = track.stops[0]?.at ?? start.at;
+  const stops = route.map((s, i) =>
+    i === 0
+      ? { ...s, at: startAt, from: undefined }
+      : { ...s, from: legFor(route[i - 1], s, day.mode) },
+  );
+  return { ...day, tracks: [{ ...track, stops: cascade(stops) }] };
 }

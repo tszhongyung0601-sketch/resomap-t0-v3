@@ -6,9 +6,9 @@ import {
   SEARCH_CATS,
   SEARCH_DISCLOSURE,
   catLabel,
-  searchUrl,
+  doorsFor,
+  type Door,
   type SearchCat,
-  type SearchPlatform,
 } from "../data/affiliateLinks";
 import { pushRecent } from "../lib/dealSearch";
 import { track } from "../lib/track";
@@ -16,7 +16,7 @@ import { useNav } from "../nav";
 import type { DealCategory } from "../types";
 
 /**
- * 搜尋結果 — two doors, one per platform.
+ * 搜尋結果 — one door per platform page.
  *
  * There is no product list on this screen, on purpose. ResoMap has no live feed
  * from either platform, and a list of cards with prices on them would be a list
@@ -24,10 +24,13 @@ import type { DealCategory } from "../types";
  * KKday each have a results page for this word in this category, so that is
  * what the traveller is offered: pick a platform, land on its real results.
  *
- * The word and the category can both be changed here without going back. The
- * search is held in this screen's own state rather than pushed as a new route,
- * so refining it three times still leaves one tap of 返回 to the hub instead of
- * three.
+ * The word, the category and the dates can all be changed here without going
+ * back. They are held in this screen's own state rather than pushed as new
+ * routes, so refining a search three times still leaves one tap of 返回.
+ *
+ * Dates arrive filled in when a trip's 旅遊指南 opened this screen. They reach
+ * a platform only where its address takes them — Klook's hotel and flight
+ * searches — and every other door says so, instead of silently dropping them.
  */
 
 /* What the funnel files an outbound search under. 行程體驗 is a ticket to the
@@ -37,13 +40,37 @@ const FUNNEL: Record<SearchCat, DealCategory> = {
   tour: "ticket",
   hotel: "stay",
   car: "transport",
+  transport: "transport",
+  flight: "transport",
 };
 
-export function DealSearch({ q: q0, cat: cat0 }: { q: string; cat: SearchCat }) {
+/* The two date fields, named for what they mean in each category. */
+const DATE_WORDS: Record<SearchCat, [string, string]> = {
+  hotel: ["入住", "退房"],
+  flight: ["去程", "回程"],
+  car: ["取車", "還車"],
+  ticket: ["開始", "結束"],
+  tour: ["開始", "結束"],
+  transport: ["出發", "回程"],
+};
+
+export function DealSearch({
+  q: q0,
+  cat: cat0,
+  from: from0,
+  to: to0,
+}: {
+  q: string;
+  cat: SearchCat;
+  from?: string;
+  to?: string;
+}) {
   const nav = useNav();
   const [q, setQ] = useState(q0);
   const [draft, setDraft] = useState(q0);
   const [cat, setCat] = useState<SearchCat>(cat0);
+  const [from, setFrom] = useState(from0 ?? "");
+  const [to, setTo] = useState(to0 ?? "");
 
   const submit = (word: string, c: SearchCat = cat) => {
     setQ(word);
@@ -53,6 +80,8 @@ export function DealSearch({ q: q0, cat: cat0 }: { q: string; cat: SearchCat }) 
   };
 
   const placeholder = SEARCH_CATS.find((c) => c.id === cat)!.placeholder;
+  const doors = doorsFor(cat, q, { from: from || undefined, to: to || undefined });
+  const [w1, w2] = DATE_WORDS[cat];
 
   return (
     <Screen>
@@ -78,16 +107,26 @@ export function DealSearch({ q: q0, cat: cat0 }: { q: string; cat: SearchCat }) 
         }
       />
 
-      <div className="px-5 pt-3">
+      {/* Dates: native pickers, so the phone's own calendar opens. */}
+      <div className="mx-5 mt-2 grid grid-cols-2 gap-2">
+        <DateField label={w1} value={from} onChange={setFrom} />
+        <DateField label={w2} value={to} min={from || undefined} onChange={setTo} />
+      </div>
+
+      <div className="px-5 pt-5">
         <h2 className="text-[19px] font-bold leading-snug text-ink">
           「{q}」的{catLabel(cat)}
         </h2>
-        <p className="mt-1 text-[13px] text-ink-3">選一個平台看結果，會在新分頁開啟。</p>
+        <p className="mt-1 text-[13px] text-ink-3">
+          {cat === "flight"
+            ? "機票只有 Klook 有賣，KKday 沒有。會在新分頁開啟。"
+            : "選一個平台看結果，會在新分頁開啟。"}
+        </p>
       </div>
 
       <div className="space-y-3 px-5 pt-4">
-        {PLATFORMS.map((p) => (
-          <PlatformDoor key={p.id} platform={p.id} q={q} cat={cat} />
+        {doors.map((d) => (
+          <PlatformDoor key={d.url} door={d} cat={cat} />
         ))}
       </div>
 
@@ -97,24 +136,48 @@ export function DealSearch({ q: q0, cat: cat0 }: { q: string; cat: SearchCat }) 
   );
 }
 
+function DateField({
+  label,
+  value,
+  min,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  min?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block rounded-2xl bg-surface px-3.5 py-2">
+      <span className="block text-[11.5px] font-semibold text-ink-3">{label}（選填）</span>
+      <input
+        type="date"
+        value={value}
+        min={min}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-0.5 h-8 w-full bg-transparent text-[15px] font-semibold text-ink outline-none"
+      />
+    </label>
+  );
+}
+
 /**
- * One platform's results, as a single large target.
+ * One platform page, as a single large target.
  *
  * A real link rather than a button calling `window.open`: a phone's long-press
  * menu works on it, it is never caught by a popup blocker, and the address is
  * there for anybody who wants to see where they are being sent. `sponsored` is
  * the rel search engines ask affiliate links to carry.
  */
-function PlatformDoor({ platform, q, cat }: { platform: SearchPlatform; q: string; cat: SearchCat }) {
-  const p = PLATFORMS.find((x) => x.id === platform)!;
-  const url = searchUrl(platform, cat, q);
+function PlatformDoor({ door, cat }: { door: Door; cat: SearchCat }) {
+  const p = PLATFORMS.find((x) => x.id === door.platform)!;
 
   return (
     <a
-      href={url}
+      href={door.url}
       target="_blank"
       rel="noopener noreferrer sponsored"
-      onClick={() => track("affiliate_outbound", { partner: platform, category: FUNNEL[cat] })}
+      onClick={() => track("affiliate_outbound", { partner: door.platform, category: FUNNEL[cat] })}
       className="flex min-h-[92px] items-center gap-3.5 rounded-2xl bg-white p-4 ring-1 ring-line transition active:scale-[.99] active:bg-surface"
     >
       <span
@@ -124,11 +187,11 @@ function PlatformDoor({ platform, q, cat }: { platform: SearchPlatform; q: strin
         {p.name}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15.5px] font-bold text-ink">在 {p.name} 查看</span>
-        <span className="mt-0.5 block truncate text-[13.5px] text-ink-2">
-          「{q}」{catLabel(cat)}
+        <span className="block text-[15.5px] font-bold text-ink">{door.title}</span>
+        <span className="mt-0.5 block truncate text-[13.5px] text-ink-2">{door.sub}</span>
+        <span className="mt-1 block text-[11.5px] text-ink-3">
+          {door.note ? `${p.site}・${door.note}` : p.site}
         </span>
-        <span className="mt-1 block text-[11.5px] text-ink-3">{p.site}</span>
       </span>
       <OutIcon />
     </a>

@@ -281,7 +281,18 @@ export interface Traveller {
 
 /* ------------------------------------------------------------- itinerary */
 
-export type LegMode = "walk" | "train" | "bus" | "taxi" | "drive";
+export type LegMode =
+  | "walk"
+  | "train"
+  | "bus"
+  | "taxi"
+  | "drive"
+  /* V3 — the day-wide choices a traveller makes on 設定交通方式. `transit` is
+     大眾運輸 as a whole, because a planner that says 捷運 between two points
+     is claiming a line runs there; `self` is 自行安排, a leg with no clock. */
+  | "scooter"
+  | "transit"
+  | "self";
 
 export const LEG_LABEL: Record<LegMode, string> = {
   walk: "步行",
@@ -289,7 +300,14 @@ export const LEG_LABEL: Record<LegMode, string> = {
   bus: "公車",
   taxi: "計程車",
   drive: "開車",
+  scooter: "機車",
+  transit: "大眾運輸",
+  self: "自行安排",
 };
+
+/** The five a traveller can pick for a whole day, in the order the sheet lists them. */
+export type DayMode = "self" | "drive" | "transit" | "walk" | "scooter";
+export const DAY_MODES: DayMode[] = ["self", "drive", "transit", "walk", "scooter"];
 
 export interface Leg {
   mode: LegMode;
@@ -318,7 +336,23 @@ export type StopRef =
   /* A festival or a market. The sixth kind, and the first one that is a
      time as much as a place — which is why it is the only one an itinerary
      can refuse: see `daysMatching`. */
-  | { kind: "event"; eventId: string };
+  | { kind: "event"; eventId: string }
+  /* V3 — a real place ResoMap has no record of: a restaurant or a hotel off
+     OpenStreetMap, picked on the home map. There is no table to look it up
+     in, so the stop carries its own name and coordinates. */
+  | { kind: "place"; place: PlaceRef };
+
+/** A real place from OpenStreetMap — never a ResoMap partner. */
+export interface PlaceRef {
+  /** `osm:node/123` */
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  cat: "food" | "stay" | "sight";
+  /** 餐廳 / 咖啡廳 / 飯店 / 民宿 … */
+  sub?: string;
+}
 
 export interface Stop {
   id: string;
@@ -355,6 +389,8 @@ export interface Day {
   weekday: string;
   tracks: Track[];
   meetUp?: { poiId: string; at: string };
+  /** V3 — how this day gets around, set on 設定交通方式. Absent means nobody chose. */
+  mode?: DayMode;
 }
 
 export type TripPhase = "upcoming" | "soon" | "ongoing";

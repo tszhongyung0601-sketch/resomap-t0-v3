@@ -117,19 +117,21 @@ export function resetReceipts() {
  * call, which it reads as "changed again" and re-renders forever. Filtering
  * happens after the subscription, where a new array costs nothing.
  */
-function useReceipts(tripId: string): Expense[] {
+export function useReceipts(tripId: string): Expense[] {
   const all = useSyncExternalStore(subscribe, () => RECEIPTS);
   return all.filter((e) => e.tripId === tripId);
 }
 
 /* ---------------------------------------------------------------- 旅費 */
 
-export function Expenses({ tripId }: { tripId: string }) {
+export function Expenses({ tripId, add }: { tripId: string; add?: boolean }) {
   const nav = useNav();
   const trip = nav.trips.find((t) => t.id === tripId);
 
   const list = useReceipts(tripId);
-  const [adding, setAdding] = useState(false);
+  /* Opened already adding when it came from the ＋ on the trip's 共同記帳 card —
+     that tap meant "record something", not "show me the ledger first". */
+  const [adding, setAdding] = useState(Boolean(add));
 
   const people = peopleOf(trip, list);
   const sum = total(list);

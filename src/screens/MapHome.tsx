@@ -12,11 +12,16 @@ import { distance, km, type LatLng } from "../lib/geo";
 import { FAILURE_MESSAGE, locate } from "../lib/geolocation";
 import { setHere, useHere } from "../lib/here";
 import { describe, useNow } from "../lib/weather";
-import { nearbyOsmPlaces, type OsmPlace } from "../lib/overpass";
+import { nearbyFoodStay, nearbyOsmPlaces, type OsmPlace } from "../lib/overpass";
+import { OSM_SNAPSHOT } from "../data/osmSnapshot";
+import { PLACE_PIN } from "../lib/placePin";
+import { AddToTrip } from "../components/AddToTrip";
+import { searchUrl } from "../data/affiliateLinks";
+import { togglePlace, useSaved } from "../lib/saved";
 import { audiosFor } from "../lib/audio";
 import { openPlaceDirections } from "../lib/maps";
 import { useNav } from "../nav";
-import type { Poi } from "../types";
+import type { PlaceRef, Poi, Trip } from "../types";
 
 /**
  * The map home: where I am, and what is worth walking to.
@@ -36,6 +41,11 @@ import type { Poi } from "../types";
  * **Every pin means the same thing.** All seven places have a recorded guide, so
  * there is one pin language and therefore no legend. The moment a map needs a
  * key to be read, the key is doing work the pins should have done.
+ *
+ * V3 round 2 added two more kinds on request — 餐廳 and 住宿, real businesses
+ * off OpenStreetMap — and kept the rule's intent: each kind has its own colour
+ * and glyph, so a pin still says what it is without a key, and a row of
+ * filters above the map lets the traveller look at one kind at a time.
  *
  * **It is not a separate demo.** Tapping through lands on the same POI screen
  * everything else links to, which is what carries the traveller into the guide
@@ -107,9 +117,39 @@ export function MapHome() {
 
   const [pickedOsm, setPickedOsm] = useState<OsmPlace | null>(null);
 
+  /* 餐廳 and 住宿. Seeded from the snapshot when the traveller is near the
+     default spot, so the pins are there on the first frame, then replaced by
+     the live answer when it arrives. A failed live request keeps the seed; a
+     successful one that finds nothing means there is nothing, and says so. */
+  const [filter, setFilter] = useState<Filter>("all");
+  const [places, setPlaces] = useState(() => pickPlaces(fix.at, snapshotNear(fix.at)));
+  const [pickedPlace, setPickedPlace] = useState<PlaceRef | null>(null);
+  const [adding, setAdding] = useState<{ place: PlaceRef; trip: Trip } | null>(null);
+  const [choosingTrip, setChoosingTrip] = useState(false);
+  /* Fit the map to its pins once, on the first paint, and never again —
+     not when the live places land, not when a filter changes. */
+  const [autoFit, setAutoFit] = useState(true);
+  const saved = useSaved();
+
+  useEffect(() => {
+    let live = true;
+    setPlaces(pickPlaces(fix.at, snapshotNear(fix.at)));
+    nearbyFoodStay(fix.at).then((res) => {
+      if (!live || !res) return;
+      setAutoFit(false);
+      setPlaces(pickPlaces(fix.at, res));
+    });
+    return () => {
+      live = false;
+    };
+  }, [fix.at]);
+
+  const showSights = filter === "all" || filter === "sight";
   const pins = useMemo<MapPin[]>(
     () => [
-      ...near.map(({ a }) => ({
+      ...(filter === "all" || filter === "food" ? places.food : []).map((p) => placePin(p, pickedPlace)),
+      ...(filter === "all" || filter === "stay" ? places.stay : []).map((p) => placePin(p, pickedPlace)),
+      ...(showSights ? near : []).map(({ a }) => ({
         poi: a.poi,
         audio: true,
         selected: a.id === picked,
@@ -118,7 +158,7 @@ export function MapHome() {
          lat, lng and kind off the record and nothing else, so a stand-in with
          those is the whole contract. `context` is the small grey dot: present,
          tappable, and visibly not one of the seven. */
-      ...osm.map((o) => ({
+      ...(showSights ? osm : []).map((o) => ({
         poi: {
           id: `osm:${o.id}`,
           name: o.name,
@@ -134,7 +174,7 @@ export function MapHome() {
         context: true,
       })),
     ],
-    [near, picked, osm],
+    [near, picked, osm, places, filter, pickedPlace, showSights],
   );
 
   const chosen = picked ? near.find((n) => n.a.id === picked) : undefined;
@@ -146,11 +186,23 @@ export function MapHome() {
   }, [toast]);
 
   function fly(at: LatLng, zoom?: number) {
+    setAutoFit(false);
     token.current += 1;
     setFlight({ at: [at.lat, at.lng], zoom, token: token.current });
   }
 
   function select(id: string) {
+    /* 餐廳 and 住宿 first: their ids share the `osm:` prefix with the grey
+       context dots, and the two lists never overlap. */
+    const place = [...places.food, ...places.stay].find((p) => p.id === id);
+    if (place) {
+      setPicked(null);
+      setPickedOsm(null);
+      setPickedPlace(place);
+      setAutoFit(false);
+      fly(place);
+      return;
+    }
     if (id.startsWith("osm:")) {
       const o = osm.find((x) => `osm:${x.id}` === id);
       if (o) {
@@ -212,7 +264,7 @@ export function MapHome() {
              result, and once when a late Overpass response arrives, undoing a
              drag. Both of those are the auto-recentre nobody wants, so the
              first flight or the first merged place ends the auto-fit. */
-          fit={!flight && osm.length === 0}
+          fit={autoFit && !flight && osm.length === 0}
           /* Never grouped. On a map whose whole message is "these are the places
              with a guide", a bubble reading 3 is three places you cannot see. */
           spread
@@ -235,6 +287,36 @@ export function MapHome() {
           <Headphones size={11} />
           <span className="num shrink-0">{near.length} 個可以聽</span>
           <Sky />
+        </div>
+
+        {/* One kind at a time, or all of them. White pills over the map, so they
+            read as controls on top of it rather than part of it. */}
+        <div className="absolute inset-x-0 top-[46px] z-10 flex gap-1.5 overflow-x-auto px-2.5 pb-1 no-scrollbar">
+          {FILTERS.map((f) => {
+            const on = f.id === filter;
+            const n = f.id === "food" ? places.food.length : f.id === "stay" ? places.stay.length : null;
+            return (
+              <button
+                key={f.id}
+                onClick={() => {
+                  setFilter(f.id);
+                  setAutoFit(false);
+                  setPicked(null);
+                  setPickedPlace(null);
+                }}
+                aria-pressed={on}
+                className={`relative inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-[12.5px] font-semibold shadow-[0_1px_6px_rgba(0,0,0,.16)] transition after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] ${
+                  on ? "bg-ink text-white" : "bg-bg text-ink-2 active:bg-surface"
+                }`}
+              >
+                {f.dot && (
+                  <span className="size-2.5 rounded-full" style={{ background: f.dot }} aria-hidden />
+                )}
+                {f.label}
+                {n !== null && <span className={`num ${on ? "text-white/80" : "text-ink-3"}`}>{n}</span>}
+              </button>
+            );
+          })}
         </div>
 
         {/* The tile licence requires the attribution to be visible, and its own
@@ -381,6 +463,50 @@ export function MapHome() {
           </div>
         )}
       </Sheet>
+
+      {/* A real restaurant or place to stay. Named for what it is, with where
+          the data came from and the plain fact that ResoMap has no arrangement
+          with it — then the four things the traveller can do. */}
+      <Sheet
+        open={Boolean(pickedPlace) && !adding}
+        onClose={() => {
+          setPickedPlace(null);
+          setChoosingTrip(false);
+        }}
+      >
+        {pickedPlace && (
+          <PlaceCard
+            place={pickedPlace}
+            metres={distance(fix.at, pickedPlace)}
+            saved={saved.places.some((x) => x.id === pickedPlace.id)}
+            trips={nav.trips}
+            choosingTrip={choosingTrip}
+            onAdd={() => {
+              if (nav.trips.length === 0) {
+                setToast("還沒有行程。先到「行程」建立一個，再把這裡加進去。");
+                return;
+              }
+              if (nav.trips.length === 1) setAdding({ place: pickedPlace, trip: nav.trips[0] });
+              else setChoosingTrip(true);
+            }}
+            onPickTrip={(trip) => {
+              setChoosingTrip(false);
+              setAdding({ place: pickedPlace, trip });
+            }}
+          />
+        )}
+      </Sheet>
+
+      {adding && adding.trip.days.length > 0 && (
+        <AddToTrip
+          target={{ kind: "place", place: adding.place }}
+          trip={adding.trip}
+          onClose={() => {
+            setAdding(null);
+            setPickedPlace(null);
+          }}
+        />
+      )}
 
       {toast && (
         <div className="rm-in pointer-events-none fixed inset-x-0 bottom-28 z-50 flex justify-center px-6">
@@ -537,5 +663,153 @@ function Sky() {
       </span>
       <span className="num shrink-0">{Math.round(now.tempC)}°</span>
     </>
+  );
+}
+
+/* ------------------------------------------------- V3 round 2: 餐廳・住宿 */
+
+type Filter = "all" | "sight" | "food" | "stay";
+
+const FILTERS: { id: Filter; label: string; dot?: string }[] = [
+  { id: "all", label: "全部" },
+  { id: "sight", label: "景點", dot: "#ff6210" },
+  { id: "food", label: "餐廳", dot: PLACE_PIN.food.color },
+  { id: "stay", label: "住宿", dot: PLACE_PIN.stay.color },
+];
+
+/** The snapshot, when the traveller is standing near where it was taken. */
+function snapshotNear(at: LatLng): { food: PlaceRef[]; stay: PlaceRef[] } {
+  return distance(at, OSM_SNAPSHOT.at) < 3000 ? OSM_SNAPSHOT : { food: [], stay: [] };
+}
+
+/**
+ * Which of the places to draw: nearest first, one per name (a chain with four
+ * branches in view is one answer, not four pins), and never on top of the
+ * blue dot — a pin sitting on "you are here" hides the one thing the map
+ * must always show.
+ */
+function pickPlaces(at: LatLng, all: { food: PlaceRef[]; stay: PlaceRef[] }) {
+  const choose = (list: PlaceRef[], radius: number, cap: number) => {
+    const seen = new Set<string>();
+    return list
+      .map((p) => ({ p, m: distance(at, p) }))
+      .filter(({ m }) => m > 60 && m <= radius)
+      .sort((a, b) => a.m - b.m)
+      .filter(({ p }) => (seen.has(p.name) ? false : (seen.add(p.name), true)))
+      .slice(0, cap)
+      .map(({ p }) => p);
+  };
+  return { food: choose(all.food, 1200, 12), stay: choose(all.stay, 3000, 8) };
+}
+
+function placePin(p: PlaceRef, picked: PlaceRef | null): MapPin {
+  return {
+    poi: { id: p.id, name: p.name, area: p.sub ?? "", lat: p.lat, lng: p.lng, emoji: "", tint: "" },
+    place: p.cat === "stay" ? "stay" : "food",
+    selected: picked?.id === p.id,
+  };
+}
+
+function PlaceCard({
+  place,
+  metres,
+  saved,
+  trips,
+  choosingTrip,
+  onAdd,
+  onPickTrip,
+}: {
+  place: PlaceRef;
+  metres: number;
+  saved: boolean;
+  trips: Trip[];
+  choosingTrip: boolean;
+  onAdd: () => void;
+  onPickTrip: (t: Trip) => void;
+}) {
+  const kind = place.cat === "stay" ? "stay" : "food";
+  const color = PLACE_PIN[kind].color;
+
+  return (
+    <div className="px-5 pb-5 pt-1">
+      <div className="flex items-start gap-3">
+        <span
+          className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-full text-[19px] text-white"
+          style={{ background: color }}
+          aria-hidden
+        >
+          {kind === "stay" ? "🛏" : "🍴"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[19px] font-bold leading-snug text-ink">{place.name}</h2>
+          <div className="num mt-1 text-[13px] text-ink-3">
+            {place.sub || (kind === "stay" ? "住宿" : "餐廳")} · {km(metres)}
+          </div>
+        </div>
+        <button
+          onClick={() => togglePlace(place)}
+          aria-label={saved ? "取消收藏" : "收藏"}
+          aria-pressed={saved}
+          className={`grid size-11 shrink-0 place-items-center rounded-full text-[20px] active:bg-surface ${
+            saved ? "text-brand" : "text-ink-3"
+          }`}
+        >
+          {saved ? "♥" : "♡"}
+        </button>
+      </div>
+
+      <p className="mt-2.5 text-[12px] leading-relaxed text-ink-3">
+        資料：OpenStreetMap。這是一般店家，不是 ResoMap 的合作商家，營業時間與價格請以店家為準。
+      </p>
+
+      {choosingTrip ? (
+        <div className="mt-4">
+          <div className="text-[13px] font-semibold text-ink-3">加到哪一趟？</div>
+          <div className="mt-2 space-y-2">
+            {trips.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onPickTrip(t)}
+                className="flex min-h-12 w-full items-center gap-2 rounded-2xl bg-surface px-4 text-left active:bg-surface-2"
+              >
+                <span className="flex-1 truncate text-[15px] font-semibold text-ink">{t.title}</span>
+                <span className="num shrink-0 text-[12.5px] text-ink-3">{t.dates}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              openPlaceDirections({ name: place.name, area: "", lat: place.lat, lng: place.lng })
+            }
+          >
+            導航
+          </Button>
+          <Button onClick={onAdd}>加入行程</Button>
+        </div>
+      )}
+
+      {/* A hotel can be booked, so it gets the two platforms. Searched by its
+          own name in their hotel category, carrying the affiliate ids. */}
+      {kind === "stay" && !choosingTrip && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {(["klook", "kkday"] as const).map((pf) => (
+            <a
+              key={pf}
+              href={searchUrl(pf, "hotel", place.name)}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="flex min-h-12 items-center justify-center gap-1 rounded-2xl text-[14px] font-bold ring-1 ring-line active:bg-surface"
+              style={{ color: pf === "klook" ? "#FF5B00" : "#1FA8B2" }}
+            >
+              在 {pf === "klook" ? "Klook" : "KKday"} 找這間 ↗
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
