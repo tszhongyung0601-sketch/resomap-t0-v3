@@ -623,12 +623,12 @@ export function StoryPlayer({
  * here cannot open an empty list. When nothing at all is nearby the panel says
  * that instead of listing five dead ends.
  */
+/* V3: no merchants, drivers or guides — ResoMap has signed none yet. The
+   three doors left are the ones 周邊推薦 still has. */
 const NEXT_STEPS: { cat: NearbyCat; icon: string; label: string; note: string }[] = [
-  { cat: "restaurant", icon: "🍜", label: "看附近美食", note: "在地小吃與餐館" },
-  { cat: "souvenir", icon: "🛍️", label: "找伴手禮", note: "老舖與名產" },
-  { cat: "driver", icon: "🚐", label: "找包車", note: "接送與包車旅遊" },
-  { cat: "guide", icon: "🧭", label: "找私人導遊", note: "深度導覽、客製路線" },
   { cat: "aff-tour", icon: "🎫", label: "找 Local tour", note: "一日遊與體驗行程" },
+  { cat: "aff-hotel", icon: "🏨", label: "找住宿", note: "附近的飯店與民宿" },
+  { cat: "rental", icon: "🚗", label: "找租車", note: "車站與市區的取車點" },
 ];
 
 function NextUp({
@@ -667,7 +667,7 @@ function NextUp({
 
       {steps.length === 0 ? (
         <p className="mt-4 rounded-2xl bg-surface p-4 text-[13.5px] leading-relaxed text-ink-3">
-          這個範圍內還沒有推薦的商家或服務。
+          這個範圍內還沒有可以推薦的行程、住宿或租車。
         </p>
       ) : (
         <div className="mt-3 space-y-2">

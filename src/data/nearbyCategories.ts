@@ -56,85 +56,14 @@ export interface NearbySection {
   cards: NearbyCard[];
 }
 
+/* V3: ResoMap has not signed a single merchant, driver or guide yet, so the
+   four questions that were answered with ResoMap's own supply — 吃什麼、帶什麼
+   回家、需要人帶你玩、and ResoMap's half of 今晚住哪 — are gone. What is left is
+   answered by somebody else's real inventory: Klook and KKday tours, Booking
+   and Agoda rooms, and hire counters that exist. The categories stay in
+   `NearbyCat`, and the merchant screens stay in the codebase, for the day
+   there is supply to put behind them. */
 export const NEARBY_SECTIONS: NearbySection[] = [
-  {
-    id: "eat",
-    question: "吃什麼？",
-    cards: [
-      {
-        cat: "restaurant",
-        title: "附近推薦餐廳",
-        sub: "在地小吃與餐館",
-        source: "resomap",
-        label: "ResoMap 精選",
-        info: "partner",
-        emoji: "🍜",
-        photo: "jingmei-snack",
-      },
-    ],
-  },
-  {
-    id: "take-home",
-    question: "帶什麼回家？",
-    cards: [
-      {
-        cat: "souvenir",
-        title: "附近伴手禮",
-        sub: "老舖、名產與可以只買一小包的店",
-        source: "resomap",
-        label: "ResoMap 精選",
-        info: "partner",
-        emoji: "🛍️",
-        photo: "souvenir-shop-1",
-      },
-    ],
-  },
-  {
-    id: "with-you",
-    question: "需要人帶你玩？",
-    cards: [
-      {
-        cat: "guide",
-        title: "私人導遊",
-        sub: "深度導覽、客製路線",
-        source: "resomap",
-        label: "ResoMap 精選",
-        info: "partner",
-        emoji: "🧭",
-        portraitOf: "p-tainan-guide",
-        half: true,
-      },
-      {
-        cat: "driver",
-        title: "包車司機",
-        sub: "機場接送、包車旅遊",
-        source: "resomap",
-        label: "ResoMap 精選",
-        info: "partner",
-        emoji: "🚐",
-        portraitOf: "p-acheng",
-        half: true,
-      },
-    ],
-  },
-  {
-    id: "get-around",
-    question: "要自己開嗎？",
-    cards: [
-      {
-        cat: "rental",
-        title: "附近租車",
-        sub: "車站與市區的取車點",
-        /* Neither ResoMap's own supply nor an affiliate programme: real
-           companies with no relationship to either. The label says so, and
-           every card in the list repeats it. */
-        source: "partner",
-        label: "Demo・未正式合作",
-        info: "affiliate",
-        emoji: "🚗",
-      },
-    ],
-  },
   {
     id: "experience",
     question: "更多旅遊體驗",
@@ -156,26 +85,32 @@ export const NEARBY_SECTIONS: NearbySection[] = [
     question: "今晚住哪？",
     cards: [
       {
-        cat: "hotel",
-        title: "附近旅館",
-        sub: "ResoMap 商家的住宿",
-        source: "resomap",
-        label: "ResoMap 精選",
-        info: "partner",
-        emoji: "🛏️",
-        photoFromPoi: "jiaoxi",
-        half: true,
-      },
-      {
         cat: "aff-hotel",
-        title: "更多住宿",
+        title: "附近住宿",
         sub: "更多房型與即時房況",
         source: "partner",
-        label: "聯盟合作 · Booking / Agoda",
+        label: "Booking / Agoda",
         info: "affiliate",
         emoji: "🏨",
         photoFromPoi: "beitou",
-        half: true,
+      },
+    ],
+  },
+  {
+    id: "get-around",
+    question: "要自己開嗎？",
+    cards: [
+      {
+        cat: "rental",
+        title: "附近租車",
+        sub: "車站與市區的取車點",
+        /* Neither ResoMap's own supply nor an affiliate programme: real
+           companies with no relationship to either. The label says so, and
+           every card in the list repeats it. */
+        source: "partner",
+        label: "Demo・未正式合作",
+        info: "affiliate",
+        emoji: "🚗",
       },
     ],
   },
@@ -202,4 +137,5 @@ export type Range = (typeof RANGES)[number];
  * somebody deciding where to eat came for. The detail moved behind the ⓘ on
  * each card and into 我的 → 關於這個 Demo.
  */
-export const NEARBY_DISCLOSURE_SHORT = "商家與服務者資料由提供者自行填寫，皆為示意資料。";
+export const NEARBY_DISCLOSURE_SHORT =
+  "行程、住宿與租車資料皆為示意，價格與供應以各平台為準。ResoMap 目前沒有合作商家。";

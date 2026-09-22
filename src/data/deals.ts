@@ -358,51 +358,9 @@ export const DEALS: Deal[] = [
     tint: "#E9E6F3",
   },
 
-  /* ----------------------------------------------------------- 在地優惠 */
-  /* Local merchant supply does not exist yet. Shown so the direction is
-     legible, marked so nobody thinks it is live. */
-  {
-    id: "d-local-beef",
-    category: "local",
-    title: "府城牛肉湯 · 加湯免費",
-    priceTwd: 0,
-    destId: "tainan",
-    poiId: "tainan-beef",
-    emoji: "🍲",
-    tint: "#F3E2D8",
-    comingLater: true,
-  },
-  {
-    id: "d-local-tea",
-    category: "local",
-    title: "神農街茶館 · 第二杯半價",
-    priceTwd: 0,
-    destId: "tainan",
-    poiId: "shennong",
-    emoji: "🍵",
-    tint: "#E5EEE2",
-    comingLater: true,
-  },
-  {
-    id: "d-local-souvenir",
-    category: "local",
-    title: "台南伴手禮 · 滿 500 折 50",
-    priceTwd: 0,
-    destId: "tainan",
-    emoji: "🎁",
-    tint: "#F2E6D6",
-    comingLater: true,
-  },
-  {
-    id: "d-local-hualien-mochi",
-    category: "local",
-    title: "花蓮麻糬老店 · 試吃加購價",
-    priceTwd: 0,
-    destId: "hualien",
-    emoji: "🍡",
-    tint: "#F3E9E2",
-    comingLater: true,
-  },
+  /* 在地優惠 lived here: four merchant discounts marked 即將推出. V3 removed
+     them — ResoMap has no merchants, and a coming-soon offer from a named
+     shop still reads as a shop that has agreed to something. */
 ];
 
 export const BY_DEAL: Record<string, Deal> = Object.fromEntries(

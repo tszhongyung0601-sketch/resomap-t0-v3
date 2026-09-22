@@ -1,6 +1,8 @@
 import { BY_DEST } from "../../data/destinations";
 import { audiosFor } from "../audio";
-import { nearbyMerchants, nearbyRentals } from "../nearby";
+import { nearbyRentals } from "../nearby";
+import { POIS } from "../../data";
+import { distance } from "../geo";
 import { generatePlan, type Plan, type PlanRequest, type TransportId } from "../planner";
 import { viewOf } from "../stop";
 import type { Intent } from "./intent";
@@ -343,16 +345,21 @@ function questionReply(intent: Intent, ctx: ChatContext): Reply {
       };
     }
     case "food": {
-      const list = nearbyMerchants(ctxNear, "restaurant");
-      if (!list.length) return { text: `${poi.name} 5 公里內還沒有收錄餐廳。` };
+      /* Real places ResoMap writes about, not shops it has signed — it has
+         signed none, so the answer says that rather than listing demo ones. */
+      const list = POIS.filter(
+        (p) => p.kind === "food" && p.id !== poi.id && distance(poi, p) <= 5000,
+      ).sort((a, b) => distance(poi, a) - distance(poi, b));
+      if (!list.length)
+        return { text: `ResoMap 還沒有合作餐廳，${poi.name} 5 公里內也還沒有收錄吃的地方。` };
       return {
-        text: `${poi.name} 5 公里內有 ${list.length} 家餐廳。`,
-        detail: list.slice(0, 3).map((m) => `${m.item.name}・${m.item.desc}`),
+        text: `ResoMap 還沒有合作餐廳。${poi.name} 5 公里內有 ${list.length} 個收錄的吃的地方：`,
+        detail: list.slice(0, 3).map((p) => `${p.name}・${p.area}`),
       };
     }
     default:
       return {
-        text: `${poi.name}的周邊推薦在景點頁的「探索附近」裡，有吃的、住的、導遊跟租車。`,
+        text: `${poi.name}的周邊推薦在景點頁的「探索附近」裡，有一日遊、住宿跟租車。`,
       };
   }
 }

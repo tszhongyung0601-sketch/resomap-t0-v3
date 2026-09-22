@@ -7,6 +7,7 @@ import { InfoSheet } from "../components/Trade";
 import { NEARBY_DISCLOSURE_SHORT } from "../data/nearbyCategories";
 import { INFO, type InfoTopic } from "../data/info";
 import {
+  ALL_NEARBY_CARDS,
   NEARBY_SECTIONS,
   type NearbyCard,
   type NearbyCat,
@@ -17,6 +18,9 @@ import { useNav } from "../nav";
 
 /**
  * What is around the place you are standing in.
+ *
+ * V3: three questions, all answered by other people's real inventory — see
+ * NEARBY_SECTIONS for why ResoMap's own four are gone.
  *
  * Five questions, not seven menu rows. The pictures lead because choosing
  * between "eat something" and "buy something to take home" is a mood, not a
@@ -57,7 +61,9 @@ export function Nearby({ poiId }: { poiId: string }) {
 
   if (!p || !counts) return null;
   const city = BY_DEST[p.destId]?.name;
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  /* Only the categories with a card. nearbyCounts still counts merchants,
+     and adding those in would promise choices the screen does not show. */
+  const total = ALL_NEARBY_CARDS.reduce((sum, c) => sum + counts[c.cat], 0);
 
   return (
     <Screen>

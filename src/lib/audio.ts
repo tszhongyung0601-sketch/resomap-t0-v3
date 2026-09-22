@@ -77,8 +77,17 @@ function fromStory(s: Story): AudioGuide {
 
 const DERIVED: AudioGuide[] = STORIES.map(fromStory);
 
-/** Every guide in the app, ResoMap's and everybody else's. */
-export const ALL_AUDIO: AudioGuide[] = [...DERIVED, ...AUDIO_GUIDES];
+/**
+ * Every guide in the app, ResoMap's and everybody else's.
+ *
+ * V3 leaves out the merchant recordings. Each one is a shop speaking about
+ * itself under 店家精選, and there is no shop — ResoMap has not signed any. The
+ * records stay in data/audio.ts for when there is one.
+ */
+export const ALL_AUDIO: AudioGuide[] = [
+  ...DERIVED,
+  ...AUDIO_GUIDES.filter((a) => a.kind !== "merchant"),
+];
 
 const BY_ID: Record<string, AudioGuide> = Object.fromEntries(
   ALL_AUDIO.map((a) => [a.id, a]),

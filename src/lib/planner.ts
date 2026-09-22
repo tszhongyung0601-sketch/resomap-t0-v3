@@ -1,5 +1,4 @@
 import { poisForDest } from "../data";
-import { MERCHANTS } from "../data/merchants";
 import { rentalsForDest } from "../data/carRentals";
 import { BY_DEST } from "../data/destinations";
 import { distance } from "./geo";
@@ -228,20 +227,26 @@ export function generatePlan(req: PlanRequest, existingIds: string[] = []): Plan
     const stops: Stop[] = [];
     const centre = places[0];
 
-    /* Somewhere to eat at one o'clock, taken from the merchant data rather than
-       invented — and skipped entirely when there is nothing within five
-       kilometres, because a lunch row pointing at a restaurant an hour away is
-       worse than no lunch row.
-       
-       Never the same place twice in one trip. Both days of a small city centre
-       on the same neighbourhood, so nearest-to-centre handed back the same
-       restaurant every day and the plan read as a loop. */
-    const lunch = MERCHANTS.filter(
-      (m) =>
-        m.category === "restaurant" &&
-        !usedLunch.has(m.id) &&
-        distance(centre, m) <= 5000,
-    ).sort((a, b) => distance(centre, a) - distance(centre, b))[0];
+    /* Somewhere to eat at one o'clock — a place of kind `food` from the POI
+       data, a real stall or restaurant ResoMap writes about rather than a shop
+       it has signed. V2 took lunch from the merchant records; V3 has no
+       merchants, and a demo shop inside somebody's itinerary is exactly the
+       claim this version stopped making. Skipped when there is nothing within
+       five kilometres, because a lunch row an hour away is worse than none.
+
+       Never the same place twice in one trip, and never a place the plan
+       already visits on some day. Both days of a small city centre sit on the
+       same neighbourhood, so nearest-to-centre handed back the same restaurant
+       every day and the plan read as a loop. */
+    const lunch = poisForDest(req.destId)
+      .filter(
+        (p) =>
+          p.kind === "food" &&
+          !usedLunch.has(p.id) &&
+          !groups.some((g) => g.some((x) => x.id === p.id)) &&
+          distance(centre, p) <= 5000,
+      )
+      .sort((a, b) => distance(centre, a) - distance(centre, b))[0];
     if (lunch) usedLunch.add(lunch.id);
 
     /* Day one starts at the hire counter when the traveller said they would
@@ -260,8 +265,8 @@ export function generatePlan(req: PlanRequest, existingIds: string[] = []): Plan
       if (laid.length === LUNCH_SLOT && lunch) {
         laid.push({
           id: `ai-${n}-lunch`,
-          ref: { kind: "merchant", merchantId: lunch.id },
-          poiId: "",
+          ref: { kind: "poi", poiId: lunch.id },
+          poiId: lunch.id,
           stayMin: 60,
           lat: lunch.lat,
           lng: lunch.lng,

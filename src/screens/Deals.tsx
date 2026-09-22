@@ -31,7 +31,8 @@ const TABS: { id: TabId; label: string }[] = [
 const isCarOrTransfer = (d: Deal) => /租車|接送/.test(d.title);
 
 /** 更多: the three categories nobody opens this tab for, but everybody needs. */
-const MORE_GROUPS: DealCategory[] = ["esim", "insurance", "local"];
+/* 在地優惠 left with V3 — there are no merchants to give one. */
+const MORE_GROUPS: DealCategory[] = ["esim", "insurance"];
 
 /**
  * eSIM and 旅平險 with no city of their own — the entire content of
@@ -292,11 +293,6 @@ function MoreList({ onOpen }: { onOpen: (d: Deal) => void }) {
             <h2 className="text-[14px] font-semibold text-ink-3">
               {DEAL_CATEGORY_LABELS[c]}
             </h2>
-            {c === "local" && (
-              <p className="pt-1 text-[12.5px] leading-relaxed text-ink-3">
-                在地商家優惠還沒有開放。這裡先讓你看見方向，目前還不能使用。
-              </p>
-            )}
             <div className="space-y-2.5 pt-3">
               {items.map((d) => (
                 <DealCard key={d.id} deal={d} onOpen={onOpen} />

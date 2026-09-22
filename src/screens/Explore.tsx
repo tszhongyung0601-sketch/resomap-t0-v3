@@ -339,12 +339,9 @@ const SERVICES: { label: string; icon: string; tint: string; go: Route }[] = [
   { label: "機票", icon: "✈️", tint: "bg-surface-2", go: { k: "transport" } },
   { label: "eSIM", icon: "📶", tint: "bg-surface-2", go: { k: "service", id: "esim" } },
   { label: "旅平險", icon: "🛡️", tint: "bg-surface-2", go: { k: "service", id: "insurance" } },
-  /* 在地優惠 lands on 更多, which is where the local-merchant deals actually are.
-     Those four are all comingLater, so the tile leads to a real state rather than
-     a real product — which is the honest version, not an empty door. */
-  { label: "在地優惠", icon: "🏪", tint: "bg-surface-2", go: { k: "deals", tab: "more" } },
-  /* 更多優惠 goes to the coupon page, which is what a traveller means by it;
-     在地優惠 above still opens the six-tab deals screen on its 更多 tab. */
+  /* 在地優惠 was a tile here, onto four merchant discounts marked 即將推出.
+     V3 has no merchants, so it went with them. */
+  /* 更多優惠 goes to the coupon page, which is what a traveller means by it. */
   { label: "更多優惠", icon: "％", tint: "bg-brand-wash", go: { k: "coupons" } },
 ];
 
@@ -360,20 +357,17 @@ function ServiceGrid() {
         {t("門票、住宿、交通，需要的時候從這裡出發。")}
       </p>
 
-      {/* Five then four. grid-cols-5 with the last row left-aligned reads as an
-          unfinished row, so the ninth tile is given its own centred slot by
-          spanning the middle column. */}
-      <div className="mt-4 grid grid-cols-5 gap-x-1 gap-y-4 px-3">
-        {SERVICES.map((sv, i) => (
+      {/* Four and four. V2 had nine tiles laid out five then four with the ninth
+          centred; 在地優惠 left with V3, and eight tiles fill two even rows. */}
+      <div className="mt-4 grid grid-cols-4 gap-x-1 gap-y-4 px-3">
+        {SERVICES.map((sv) => (
           <button
             key={sv.label}
             onClick={() => nav.go(sv.go)}
             /* min-h-[76px] and a 46px disc put the whole tile past 44px without
                an ::after, because here the tile *is* the target, not a pill
                sitting inside a bigger row. */
-            className={`flex min-h-[76px] flex-col items-center gap-1.5 rounded-xl px-0.5 py-1 transition active:bg-surface ${
-              i === 8 ? "col-start-3" : ""
-            }`}
+            className="flex min-h-[76px] flex-col items-center gap-1.5 rounded-xl px-0.5 py-1 transition active:bg-surface"
           >
             <span
               className={`grid size-[46px] shrink-0 place-items-center rounded-full text-[20px] ${sv.tint}`}
